@@ -57,7 +57,7 @@ def gerar_planilha_formatada(df, cliente_id):
         logo_esq = Image('logo_mimo.png')
         logo_esq.width = 220  # Ajuste a largura aqui se precisar
         logo_esq.height = 60  # Ajuste a altura aqui se precisar
-        ws.add_image(logo_esq, 'A1')
+        ws.add_image(logo_esq, 'A3')
 
         
         # Logo do Cliente Central
@@ -66,7 +66,7 @@ def gerar_planilha_formatada(df, cliente_id):
                 logo_centro = Image(arquivo_logo)
                 logo_centro.width = 160 # Largura do logo do cliente
                 logo_centro.height = 100 # Altura do logo do cliente
-                ws.add_image(logo_centro, 'F1')
+                ws.add_image(logo_centro, 'F3')
                 break
     except Exception as e:
         print(f"Erro ao carregar imagens: {e}")
