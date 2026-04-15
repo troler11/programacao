@@ -61,8 +61,8 @@ def gerar_planilha_formatada(df, cliente_id):
         c.fill, c.font, c.alignment = fill_vermelho, fonte_branca, Alignment(horizontal="center")
 
     for _, row in df.iterrows():
-        ws.append([row.get('Periodo',''), row.get('Horas',''), row.get('Linha',''), 
-                   row.get('Empresa',''), row.get('Prefixo',''), row.get('Motorista','')])
+        ws.append([row.get('ENT',''), row.get('INI',''), row.get('Linha',''), 
+                   row.get('CLIENTE',''), row.get('PREFIXO FINAL',''), row.get('Motorista','')])
     
     ws.column_dimensions['C'].width, ws.column_dimensions['F'].width = 50, 25
     out = io.BytesIO(); wb.save(out); out.seek(0)
