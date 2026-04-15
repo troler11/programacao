@@ -38,10 +38,8 @@ MAPA_GRUPOS = {
     "AAM": "5511934773679@c.us" 
 }
 
-# URL pública que você forneceu
 URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
-# ATENÇÃO: Se não tiver senha no Easypanel, deixe vazio ""
 CHAVE_API_WAHA = "teste" 
 
 # ==========================================
@@ -56,12 +54,10 @@ def gerar_planilha_formatada(df, cliente_id):
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
 
     try:
-        # Logo MIMO
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
         ws.add_image(logo_esq, 'A2')
 
-        # Logo Cliente
         for chave, arquivo in MAPA_LOGOS.items():
             if chave in cliente_id:
                 logo_c = Image(arquivo)
@@ -91,39 +87,24 @@ def gerar_planilha_formatada(df, cliente_id):
 
 def enviar_waha(imagem_path, nome_empresa, data_str):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
-    if not id_grupo:
-        return f"⚠️ Grupo não configurado para: {nome_empresa}"
+    if not id_grupo: return f"⚠️ Grupo não configurado para: {nome_empresa}"
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
-    
     headers = {"accept": "application/json"}
-    if CHAVE_API_WAHA: 
-        headers["X-Api-Key"] = CHAVE_API_WAHA
+    if CHAVE_API_WAHA: headers["X-Api-Key"] = CHAVE_API_WAHA
     
-    # FORMATO REVISADO: Tudo dentro do payload de dados
-    payload = {
-        'session': SESSAO_WAHA,  # Enviando aqui dentro também
-        'chatId': id_grupo,
-        'caption': msg
-    }
-
     try:
         with open(imagem_path, 'rb') as f:
-            files = {'file': ('image.png', f, 'image/png')}
-            # Mudança: Usamos params E data para garantir que o WAHA receba a sessão
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
-                params={'session': SESSAO_WAHA}, # Mantém na URL por segurança
-                data=payload,                    # Envia no corpo também
-                files=files
+                params={'session': SESSAO_WAHA}, 
+                data={'chatId': id_grupo, 'caption': msg}, 
+                files={'file': ('image.png', f, 'image/png')}
             )
-            
-        if resp.status_code in [200, 201]:
-            return "✅ Enviado com sucesso!"
+        if resp.status_code in [200, 201]: return "✅ Enviado com sucesso!"
         return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
-    except Exception as e:
-        return f"❌ Falha de conexão: {e}"
+    except Exception as e: return f"❌ Falha de conexão: {e}"
 
 # ==========================================
 # INTERFACE PRINCIPAL
@@ -136,24 +117,38 @@ if 'clientes_processados' not in st.session_state:
     st.session_state.clientes_processados = {}
 
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
-    with st.spinner("Lendo Google Sheets..."):
+    with st.spinner("Lendo Planilha do Google..."):
         try:
             hoje = datetime.now()
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
             
             xls = pd.ExcelFile(r.content)
-            formatos = [hoje.strftime("%d/%m/%Y"), hoje.strftime("%d_%m_%Y"), hoje.strftime("%d-%m-%Y")]
-            nome_aba = next((f for f in formatos if f in xls.sheet_names), None)
+            
+            # NOVOS FORMATOS DE BUSCA (Mais flexíveis)
+            formatos = [
+                hoje.strftime("%d/%m/%Y"), # 15/04/2026
+                hoje.strftime("%d/%m/%y"), # 15/04/26
+                hoje.strftime("%d/%m"),    # 15/04
+                hoje.strftime("%d-%m-%Y"), # 15-04-2026
+                hoje.strftime("%d_%m_%Y")  # 15_04_2026
+            ]
+            
+            # Tenta achar a aba removendo espaços invisíveis
+            abas_reais = [a.strip() for a in xls.sheet_names]
+            nome_aba = next((f for f in formatos if f in abas_reais), None)
 
             if not nome_aba:
-                st.error(f"❌ Aba de hoje não encontrada."); st.stop()
+                st.error(f"❌ Não achei a aba de hoje ({hoje.strftime('%d/%m/%Y')}).")
+                st.warning(f"As abas encontradas no seu arquivo foram: {xls.sheet_names}")
+                st.info("Certifique-se de que o nome da aba no Google Sheets é exatamente a data de hoje.")
+                st.stop()
 
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
             linha_cabecalho = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
             
             if linha_cabecalho is None: 
-                st.error("❌ Cabeçalho não encontrado."); st.stop()
+                st.error("❌ Não achei a linha onde começam os dados (cabeçalho)."); st.stop()
                 
             df = df_bruto.iloc[linha_cabecalho + 1:].reset_index(drop=True)
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
@@ -170,7 +165,7 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df_filtrado = df[(df['AUX_TIME'] >= hoje) & (df['AUX_TIME'] <= limite)].copy()
 
             if df_filtrado.empty:
-                st.warning("⚠️ Nenhuma viagem nas próximas 3 horas."); st.stop()
+                st.warning(f"⚠️ Nenhuma viagem nas próximas 3 horas (entre {hoje.strftime('%H:%M')} e {limite.strftime('%H:%M')})."); st.stop()
 
             clientes_dict = {}
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
