@@ -14,33 +14,33 @@ import os
 # ==========================================
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH9lJhzNgDz3x05wnE3lc24YKiUQcn_WTNgxEpsSO2jA36rAwSDfLZUkm1SgE_uoKBXvgx1_8sDTXZ/pub?output=xlsx"
 
-COLUNA_FILTRO_HORA = 'INI' 
+COLUNA_FILTRO_HORA = 'INI'
 
-COL_PERIODO = 'ENT'           
-COL_HORA = 'INI'              
-COL_LINHA = 'LINHA'           
-COL_EMPRESA = 'CLIENTE'       
-COL_PREFIXO = 'FROTA FINAL' 
-COL_MOTORISTA = 'MOTORISTA'   
+COL_PERIODO = 'ENT'
+COL_HORA = 'INI'
+COL_LINHA = 'LINHA'
+COL_EMPRESA = 'CLIENTE'
+COL_PREFIXO = 'FROTA FINAL'
+COL_MOTORISTA = 'MOTORISTA'
 
 MAPA_LOGOS = {
     "MELI": "logo_meli.png",
     "MERCADO LIVRE": "logo_meli.png",
     "AMAZON": "logo_amazon.png",
     "ADORO": "logo_adoro.png",
-    "AAM": "logo_aam.png" 
+    "AAM": "logo_aam.png"
 }
 
 MAPA_GRUPOS = {
     "MELI": "120363000000000000@g.us",
     "AMAZON": "120363000000000001@g.us",
     "ADORO": "120363000000000002@g.us",
-    "AAM": "5511934773679@c.us" 
+    "AAM": "5511934773679@c.us"
 }
 
 URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
-CHAVE_API_WAHA = "teste" 
+CHAVE_API_WAHA = "teste"
 
 # ==========================================
 # FUNÇÕES DE APOIO
@@ -56,21 +56,20 @@ def gerar_planilha_formatada(df, cliente_id):
     try:
         # Logo MIMO Esquerda
         logo_esq = Image('logo_mimo.png')
-        logo_esq.width = 220  # Ajuste a largura aqui se precisar
-        logo_esq.height = 60  # Ajuste a altura aqui se precisar
-        ws.add_image(logo_esq, 'A3')
+        logo_esq.width = 180  # Tamanho ajustado
+        logo_esq.height = 50
+        ws.add_image(logo_esq, 'A2')
 
-        
-        # Logo do Cliente Central
+        # Logo do Cliente Direita (Posição F)
         for chave, arquivo_logo in MAPA_LOGOS.items():
             if chave in cliente_id:
                 logo_centro = Image(arquivo_logo)
-                logo_centro.width = 160 # Largura do logo do cliente
-                logo_centro.height = 100 # Altura do logo do cliente
-                ws.add_image(logo_centro, 'F3')
+                logo_centro.width = 120
+                logo_centro.height = 70
+                ws.add_image(logo_centro, 'F2')
                 break
     except Exception as e:
-        print(f"Erro ao carregar imagens: {e}")
+        print(f"Aviso de imagem: {e}")
 
     ws.merge_cells('A12:F12')
     ws['A12'] = f"PROGRAMAÇÃO - {cliente_id}"
@@ -97,7 +96,7 @@ def gerar_planilha_formatada(df, cliente_id):
             row.get(COL_MOTORISTA, '')
         ])
     
-    ws.column_dimensions['C'].width = 50
+    ws.column_dimensions['C'].width = 45
     ws.column_dimensions['F'].width = 25
     
     out = io.BytesIO()
@@ -112,22 +111,23 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    # Cabeçalhos e Parâmetros (Essencial para evitar Erro 400 e 401)
     headers = {"accept": "application/json"}
-    if CHAVE_API_WAHA: headers["X-Api-Key"] = CHAVE_API_WAHA
+    if CHAVE_API_WAHA: 
+        headers["X-Api-Key"] = CHAVE_API_WAHA
     
     params = {'session': SESSAO_WAHA}
     payload = {'chatId': id_grupo, 'caption': msg}
 
     try:
         with open(imagem_path, 'rb') as f:
-            # Enviamos a sessão como parâmetro de URL (?session=default)
+            # Correção no envio do arquivo para o WAHA
+            files = {'file': ('image.png', f, 'image/png')}
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
                 params=params, 
                 data=payload, 
-                files={'file': (os.path.basename(imagem_path), f, 'image/png')}
+                files=files
             )
             
         if resp.status_code in [200, 201]:
@@ -140,30 +140,31 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
 # INTERFACE PRINCIPAL
 # ==========================================
 
-st.set_page_config(page_title="Gestão de Frota", layout="centered")
-st.title("Gerador de Escalas Separadas por Cliente 🚌⏳")
+st.set_page_config(page_title="Gestão Mimo", layout="centered")
+st.title("Gerador de Escalas por Cliente 🚌⏳")
 
 if 'clientes_processados' not in st.session_state:
     st.session_state.clientes_processados = {}
 
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
-    with st.spinner("Buscando dados e separando por cliente..."):
+    with st.spinner("Processando dados..."):
         try:
             hoje = datetime.now()
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
             
             xls = pd.ExcelFile(r.content)
-            formatos = [hoje.strftime("%d/%m/%Y"), hoje.strftime("%d_%m_%Y"), hoje.strftime("%d-%m-%Y"), hoje.strftime("%d%m%Y")]
+            formatos = [hoje.strftime("%d/%m/%Y"), hoje.strftime("%d_%m_%Y"), hoje.strftime("%d-%m-%Y")]
             nome_aba = next((f for f in formatos if f in xls.sheet_names), None)
 
             if not nome_aba:
-                st.error(f"❌ Aba do dia {hoje.strftime('%d/%m/%Y')} não encontrada."); st.stop()
+                st.error(f"❌ Aba de hoje não encontrada."); st.stop()
 
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
             linha_cabecalho = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
             
-            if linha_cabecalho is None: st.error("❌ Cabeçalho não encontrado."); st.stop()
+            if linha_cabecalho is None: 
+                st.error("❌ Cabeçalho não encontrado."); st.stop()
                 
             df = df_bruto.iloc[linha_cabecalho + 1:].reset_index(drop=True)
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
@@ -172,8 +173,8 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             limite = hoje + timedelta(hours=3)
             def parsing_hora(v):
                 try:
-                    t = pd.to_datetime(v).time() if isinstance(v, str) else v
-                    return datetime.combine(hoje.date(), t.time() if hasattr(t, 'time') else t)
+                    t = pd.to_datetime(v)
+                    return datetime.combine(hoje.date(), t.time())
                 except: return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(parsing_hora)
@@ -182,16 +183,14 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             if df_filtrado.empty:
                 st.warning("⚠️ Nenhuma viagem nas próximas 3 horas."); st.stop()
 
-            # --- LÓGICA DE SEPARAÇÃO POR CLIENTE ---
             clientes_dict = {}
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
                 cliente_nome = str(cliente).strip().upper()
+                nome_seguro = cliente_nome.replace("/", "_").replace(":", "_")
+                img_path = f"escala_{nome_seguro}.png"
                 
-                nome_seguro_arquivo = cliente_nome.replace("/", "_").replace("\\", "_").replace(":", "_")
-                img_path = f"escala_{nome_seguro_arquivo}_{hoje.strftime('%H%M')}.png"
-                
-                colunas_print = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in group_df.columns]
-                style = group_df[colunas_print].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
+                cols_print = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in group_df.columns]
+                style = group_df[cols_print].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
                     .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
                 
                 dfi.export(style, img_path, table_conversion="matplotlib", max_rows=-1)
@@ -203,12 +202,11 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 }
             
             st.session_state.clientes_processados = clientes_dict
-            st.success(f"✅ {len(clientes_dict)} clientes identificados!")
+            st.success(f"✅ {len(clientes_dict)} clientes encontrados!")
 
         except Exception as e:
             st.error(f"❌ Erro: {e}")
 
-# EXIBIÇÃO DAS PRÉVIAS E BOTÕES DE ENVIO
 if st.session_state.clientes_processados:
     for nome, dados in st.session_state.clientes_processados.items():
         with st.expander(f"📦 CLIENTE: {nome}", expanded=True):
@@ -217,9 +215,7 @@ if st.session_state.clientes_processados:
             with c1:
                 if st.button(f"📲 Enviar WhatsApp: {nome}", key=f"btn_{nome}"):
                     res = enviar_waha(dados["img"], nome, dados["data_str"])
-                    if "✅" in res:
-                        st.success(res)
-                    else:
-                        st.error(res)
+                    if "✅" in res: st.success(res)
+                    else: st.error(res)
             with c2:
-                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome.replace('/', '_')}.xlsx", key=f"dl_{nome}")
+                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome}.xlsx", key=f"dl_{nome}")
