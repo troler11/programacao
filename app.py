@@ -139,7 +139,7 @@ if st.button("Executar: Filtrar Planilha e Enviar WhatsApp", type="primary"):
     with st.spinner("Conectando ao Google Sheets e filtrando horários..."):
         try:
             hoje = datetime.now()
-            nome_aba = hoje.strftime("%d/%m/%Y") # Ex: 15/04/2026
+            nome_aba = hoje.strftime("%d%m%Y") # Ex: 15/04/2026
             
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
