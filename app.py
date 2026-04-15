@@ -121,10 +121,12 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
 
     try:
         with open(imagem_path, 'rb') as f:
+            # CORREÇÃO AQUI: Adicionamos o params={'session': SESSAO_WAHA} para forçar a sessão na URL
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
-                data={'session': SESSAO_WAHA, 'chatId': id_grupo, 'caption': msg}, 
+                params={'session': SESSAO_WAHA}, 
+                data={'chatId': id_grupo, 'caption': msg}, 
                 files={'file': (imagem_path, f, 'image/png')}
             )
         if resp.status_code in [200, 201]:
