@@ -4,3 +4,4 @@ openpyxl
 requests
 dataframe-image
 matplotlib
+pytz
