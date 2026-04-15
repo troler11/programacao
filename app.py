@@ -73,11 +73,11 @@ def gerar_planilha_formatada(df, cliente_identificador):
 
     for index, row in df.iterrows():
         linha_dados = [
-            row.get('Periodo', ''), 
-            row.get('Horas', ''),   
-            row.get('Linha', ''), 
-            row.get('Empresa', ''), 
-            row.get('Prefixo', ''), 
+            row.get('ENT', ''), 
+            row.get('INI', ''),   
+            row.get('LINHA', ''), 
+            row.get('CLIENTE', ''), 
+            row.get('PREFIXO FINAL', ''), 
             row.get('Motorista', '')
         ]
         ws.append(linha_dados)
