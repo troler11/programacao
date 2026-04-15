@@ -4,7 +4,7 @@ import requests
 import io
 import dataframe_image as dfi
 from datetime import datetime, timedelta
-import pytz  # Biblioteca para ajustar o fuso horário
+import pytz 
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.drawing.image import Image
@@ -55,12 +55,10 @@ def gerar_planilha_formatada(df, cliente_id):
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
 
     try:
-        # Logo MIMO Esquerda
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
         ws.add_image(logo_esq, 'A2')
 
-        # Logo Cliente Direita
         for chave, arquivo in MAPA_LOGOS.items():
             if chave in cliente_id:
                 logo_c = Image(arquivo)
@@ -122,9 +120,9 @@ if 'clientes_processados' not in st.session_state:
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
     with st.spinner("Buscando dados no Google Sheets..."):
         try:
-            # AJUSTE DE FUSO HORÁRIO PARA SÃO PAULO
-            fuso = pytz.timezone('America/Sao_Paulo')
-            hoje = datetime.now(fuso)
+            # AJUSTE DE FUSO HORÁRIO COM PANDAS (Evita o erro de comparação)
+            hoje = pd.Timestamp.now(tz='America/Sao_Paulo').replace(tzinfo=None)
+            limite = hoje + pd.Timedelta(hours=3)
             
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
@@ -132,18 +130,11 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             xls = pd.ExcelFile(r.content)
             abas_reais = [a.strip() for a in xls.sheet_names]
             
-            # FORMATO ENCONTRADO NO SEU LOG: 15042026
-            formatos = [
-                hoje.strftime("%d%m%Y"),   # 15042026 (O formato que você confirmou)
-                hoje.strftime("%d/%m/%Y"), # 15/04/2026
-                hoje.strftime("%d %m %Y"), # 15 04 2026
-                hoje.strftime("%d_%m_%Y")  # 15_04_2026
-            ]
-            
-            nome_aba = next((f for f in formatos if f in abas_reais), None)
+            # FORMATO DA ABA: 15042026
+            nome_aba = hoje.strftime("%d%m%Y")
 
-            if not nome_aba:
-                st.error(f"❌ Não achei a aba de hoje ({hoje.strftime('%d%m%Y')}).")
+            if nome_aba not in abas_reais:
+                st.error(f"❌ Não achei a aba de hoje ({nome_aba}).")
                 st.warning(f"Abas lidas: {xls.sheet_names}")
                 st.stop()
 
@@ -156,18 +147,18 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
 
-            limite = hoje + timedelta(hours=3)
-            
-            # Função de tratamento de hora para evitar erros de data
+            # Função de tratamento de hora usando o padrão do Pandas
             def parsing_hora(v):
                 try:
                     t = pd.to_datetime(v)
-                    return hoje.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
+                    # Força a data para ser a de hoje, mantendo a hora da planilha
+                    return pd.Timestamp(year=hoje.year, month=hoje.month, day=hoje.day,
+                                        hour=t.hour, minute=t.minute)
                 except: return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(parsing_hora)
             
-            # Filtro comparando o horário de agora com o limite de 3h
+            # Agora a comparação funciona perfeitamente
             df_filtrado = df[(df['AUX_TIME'] >= hoje) & (df['AUX_TIME'] <= limite)].copy()
 
             if df_filtrado.empty:
@@ -196,7 +187,7 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             st.success(f"✅ {len(clientes_dict)} clientes encontrados!")
 
         except Exception as e:
-            st.error(f"❌ Erro: {e}")
+            st.error(f"❌ Erro no processamento: {e}")
 
 if st.session_state.clientes_processados:
     for nome, dados in st.session_state.clientes_processados.items():
