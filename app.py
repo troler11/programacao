@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import io
 import dataframe_image as dfi
+import base64
 from datetime import datetime, timedelta
 import pytz 
 from openpyxl import Workbook
@@ -23,11 +24,25 @@ COL_EMPRESA = 'CLIENTE'
 COL_PREFIXO = 'FROTA FINAL' 
 COL_MOTORISTA = 'MOTORISTA'   
 
-MAPA_LOGOS = {"MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png", "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", "AAM": "logo_aam.png"}
-MAPA_GRUPOS = {"MELI": "120363000000000000@g.us", "AMAZON": "120363000000000001@g.us", "ADORO": "120363000000000002@g.us", "AAM": "5511934773679@c.us"}
+MAPA_LOGOS = {
+    "MELI": "logo_meli.png", 
+    "MERCADO LIVRE": "logo_meli.png", 
+    "AMAZON": "logo_amazon.png", 
+    "ADORO": "logo_adoro.png", 
+    "AAM": "logo_aam.png"
+}
+
+MAPA_GRUPOS = {
+    "MELI": "120363000000000000@g.us", 
+    "AMAZON": "120363000000000001@g.us", 
+    "ADORO": "120363000000000002@g.us", 
+    "AAM": "5511934773679@c.us"
+}
 
 URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
+
+# ATENÇÃO: Se não houver senha configurada no Easypanel, deixe vazio: ""
 CHAVE_API_WAHA = "teste"
 
 # ==========================================
@@ -40,6 +55,7 @@ def gerar_planilha_formatada(df, cliente_id):
     fill_vermelho = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
     fonte_branca = Font(color="FFFFFF", bold=True)
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
+    
     try:
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
@@ -50,19 +66,38 @@ def gerar_planilha_formatada(df, cliente_id):
                 logo_c.width, logo_c.height = 120, 70
                 ws.add_image(logo_c, 'F2')
                 break
-    except: pass
+    except: 
+        pass
+        
     ws.merge_cells('A12:F12')
     ws['A12'] = f"PROGRAMAÇÃO - {cliente_id}"
     ws['A12'].font = fonte_vermelha_titulo
     ws['A12'].alignment = Alignment(horizontal="center")
-    ws.append([]); ws.append(["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"])
+    
+    ws.append([])
+    ws.append(["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"])
+    
     for col in range(1, 7):
         c = ws.cell(row=14, column=col)
-        c.fill, c.font, c.alignment = fill_vermelho, fonte_branca, Alignment(horizontal="center")
+        c.fill = fill_vermelho
+        c.font = fonte_branca
+        c.alignment = Alignment(horizontal="center")
+        
     for _, row in df.iterrows():
-        ws.append([row.get(COL_PERIODO,''), row.get(COL_HORA,''), row.get(COL_LINHA,''), row.get(COL_EMPRESA,''), row.get(COL_PREFIXO,''), row.get(COL_MOTORISTA,'')])
-    ws.column_dimensions['C'].width, ws.column_dimensions['F'].width = 45, 25
-    out = io.BytesIO(); wb.save(out); out.seek(0)
+        ws.append([
+            row.get(COL_PERIODO,''), 
+            row.get(COL_HORA,''), 
+            row.get(COL_LINHA,''), 
+            row.get(COL_EMPRESA,''), 
+            row.get(COL_PREFIXO,''), 
+            row.get(COL_MOTORISTA,'')
+        ])
+        
+    ws.column_dimensions['C'].width = 45
+    ws.column_dimensions['F'].width = 25
+    out = io.BytesIO()
+    wb.save(out)
+    out.seek(0)
     return out
 
 def enviar_waha(imagem_path, nome_empresa, data_str):
@@ -72,40 +107,34 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    # Parâmetros que estamos enviando (DEBUG)
-    headers = {"accept": "application/json"}
+    # Cabeçalhos forçando JSON puro
+    headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json"
+    }
     if CHAVE_API_WAHA: 
         headers["X-Api-Key"] = CHAVE_API_WAHA
-    
-    # Criamos o payload exatamente como o formulário do WAHA pede
-    payload = {
-        'chatId': id_grupo,
-        'caption': msg,
-        'session': SESSAO_WAHA # Enviando dentro do corpo
-    }
-    
-    # Parâmetros de URL (Query Params)
-    params = {'session': SESSAO_WAHA} # Enviando na URL (?session=default)
 
     try:
+        # Lê a imagem gerada e converte para Base64
         with open(imagem_path, 'rb') as f:
-            # O WAHA exige que o campo de arquivo se chame 'file'
-            files = {'file': ('escala.png', f, 'image/png')}
-            
-            # LOG DE DEPURAÇÃO (Aparecerá no console do Easypanel)
-            print(f"--- DEBUG WAHA ---")
-            print(f"URL: {URL_WAHA}")
-            print(f"Params: {params}")
-            print(f"Payload: {payload}")
-            print(f"------------------")
+            img_bytes = f.read()
+            base64_img = base64.b64encode(img_bytes).decode('utf-8')
+        
+        # Monta o pacote JSON exatamente como o WAHA exige
+        payload = {
+            "session": SESSAO_WAHA,
+            "chatId": id_grupo,
+            "caption": msg,
+            "file": {
+                "mimetype": "image/png",
+                "filename": "escala.png",
+                "data": base64_img
+            }
+        }
 
-            resp = requests.post(
-                URL_WAHA, 
-                headers=headers,
-                params=params, 
-                data=payload, 
-                files=files
-            )
+        # Envio como JSON Puro
+        resp = requests.post(URL_WAHA, headers=headers, json=payload)
             
         if resp.status_code in [200, 201]:
             return "✅ Enviado com sucesso!"
@@ -116,7 +145,7 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
         return f"❌ Falha de conexão: {e}"
 
 # ==========================================
-# INTERFACE
+# INTERFACE PRINCIPAL
 # ==========================================
 
 st.set_page_config(page_title="Gestão Mimo", layout="centered")
@@ -146,6 +175,9 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
             linha_cabecalho = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
             
+            if linha_cabecalho is None:
+                st.error("❌ Cabeçalho não encontrado."); st.stop()
+            
             df = df_bruto.iloc[linha_cabecalho + 1:].reset_index(drop=True)
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
@@ -154,14 +186,11 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             def converter_tempo(v):
                 if pd.isna(v): return pd.NaT
                 try:
-                    # Se vier como tempo do Excel (datetime)
                     if hasattr(v, 'hour'):
                         dt = v
                     else:
-                        # Se vier como texto "12:00" ou "12h00"
                         s = str(v).replace('h', ':').strip()
                         dt = pd.to_datetime(s)
-                    # Cria a data de hoje com a hora da planilha
                     return agora.replace(hour=dt.hour, minute=dt.minute, second=0, microsecond=0)
                 except:
                     return pd.NaT
@@ -173,7 +202,6 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
 
             if df_filtrado.empty:
                 st.warning(f"⚠️ Nenhuma viagem encontrada entre {inicio_filtro.strftime('%H:%M')} e {fim_filtro.strftime('%H:%M')}.")
-                # DEBUG: Mostra as primeiras 5 horas que o robô tentou ler
                 st.write("Horários detectados na planilha (primeiros 5):")
                 st.write(df[[COLUNA_FILTRO_HORA, 'AUX_TIME']].head(5))
                 st.stop()
@@ -190,11 +218,16 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 
                 dfi.export(style, img_path, table_conversion="matplotlib", max_rows=-1)
                 clientes_dict[cliente_nome] = {
-                    "img": img_path, "excel": gerar_planilha_formatada(group_df, cliente_nome), "data_str": agora.strftime('%d/%m/%Y')
+                    "img": img_path, 
+                    "excel": gerar_planilha_formatada(group_df, cliente_nome), 
+                    "data_str": agora.strftime('%d/%m/%Y')
                 }
+                
             st.session_state.clientes_processados = clientes_dict
             st.success(f"✅ {len(clientes_dict)} clientes encontrados!")
-        except Exception as e: st.error(f"❌ Erro: {e}")
+            
+        except Exception as e: 
+            st.error(f"❌ Erro: {e}")
 
 if st.session_state.clientes_processados:
     for nome, dados in st.session_state.clientes_processados.items():
@@ -204,6 +237,9 @@ if st.session_state.clientes_processados:
             with c1:
                 if st.button(f"📲 Enviar WhatsApp: {nome}", key=f"btn_{nome}"):
                     res = enviar_waha(dados["img"], nome, dados["data_str"])
-                    st.write(res)
+                    if "✅" in res:
+                        st.success(res)
+                    else:
+                        st.error(res)
             with c2:
-                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome}.xlsx", key=f"dl_{nome}")
+                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome.replace('/', '_')}.xlsx", key=f"dl_{nome}")
