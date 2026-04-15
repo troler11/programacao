@@ -58,12 +58,7 @@ def gerar_planilha_formatada(df, cliente_id):
         logo_esq.width = 220  # Ajuste a largura aqui se precisar
         logo_esq.height = 60  # Ajuste a altura aqui se precisar
         ws.add_image(logo_esq, 'A1')
-        
-        # Logo MIMO Direita
-        logo_dir = Image('logo_mimo.png')
-        logo_dir.width = 220
-        logo_dir.height = 60
-        ws.add_image(logo_dir, 'F1')
+
         
         # Logo do Cliente Central
         for chave, arquivo_logo in MAPA_LOGOS.items():
@@ -71,7 +66,7 @@ def gerar_planilha_formatada(df, cliente_id):
                 logo_centro = Image(arquivo_logo)
                 logo_centro.width = 160 # Largura do logo do cliente
                 logo_centro.height = 100 # Altura do logo do cliente
-                ws.add_image(logo_centro, 'C1')
+                ws.add_image(logo_centro, 'F1')
                 break
     except Exception as e:
         print(f"Erro ao carregar imagens: {e}")
