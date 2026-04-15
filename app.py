@@ -67,16 +67,53 @@ def gerar_planilha_formatada(df, cliente_id):
 
 def enviar_waha(imagem_path, nome_empresa, data_str):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
-    if not id_grupo: return f"⚠️ Grupo não configurado para: {nome_empresa}"
-    headers = {"accept": "application/json"}
-    if CHAVE_API_WAHA: headers["X-Api-Key"] = CHAVE_API_WAHA
+    if not id_grupo: 
+        return f"⚠️ Grupo não configurado para: {nome_empresa}"
+
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
+    
+    # Parâmetros que estamos enviando (DEBUG)
+    headers = {"accept": "application/json"}
+    if CHAVE_API_WAHA: 
+        headers["X-Api-Key"] = CHAVE_API_WAHA
+    
+    # Criamos o payload exatamente como o formulário do WAHA pede
+    payload = {
+        'chatId': id_grupo,
+        'caption': msg,
+        'session': SESSAO_WAHA # Enviando dentro do corpo
+    }
+    
+    # Parâmetros de URL (Query Params)
+    params = {'session': SESSAO_WAHA} # Enviando na URL (?session=default)
+
     try:
         with open(imagem_path, 'rb') as f:
-            resp = requests.post(URL_WAHA, headers=headers, params={'session': SESSAO_WAHA}, data={'chatId': id_grupo, 'caption': msg}, files={'file': ('image.png', f, 'image/png')})
-        if resp.status_code in [200, 201]: return "✅ Enviado com sucesso!"
-        return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
-    except Exception as e: return f"❌ Falha de conexão: {e}"
+            # O WAHA exige que o campo de arquivo se chame 'file'
+            files = {'file': ('escala.png', f, 'image/png')}
+            
+            # LOG DE DEPURAÇÃO (Aparecerá no console do Easypanel)
+            print(f"--- DEBUG WAHA ---")
+            print(f"URL: {URL_WAHA}")
+            print(f"Params: {params}")
+            print(f"Payload: {payload}")
+            print(f"------------------")
+
+            resp = requests.post(
+                URL_WAHA, 
+                headers=headers,
+                params=params, 
+                data=payload, 
+                files=files
+            )
+            
+        if resp.status_code in [200, 201]:
+            return "✅ Enviado com sucesso!"
+        else:
+            return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
+            
+    except Exception as e:
+        return f"❌ Falha de conexão: {e}"
 
 # ==========================================
 # INTERFACE
