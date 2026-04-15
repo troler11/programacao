@@ -41,7 +41,8 @@ MAPA_GRUPOS = {
 
 URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
-# Se você não usa senha no Easypanel, deixe "" vazio.
+
+# IMPORTANTE: Se você não criou uma chave no Easypanel, deixe "" vazio.
 CHAVE_API_WAHA = "teste" 
 
 # ==========================================
@@ -56,12 +57,10 @@ def gerar_planilha_formatada(df, cliente_id):
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
 
     try:
-        # Logo MIMO Esquerda
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
         ws.add_image(logo_esq, 'A2')
 
-        # Logo Cliente Direita
         for chave, arquivo in MAPA_LOGOS.items():
             if chave in cliente_id:
                 logo_c = Image(arquivo)
@@ -99,7 +98,7 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
     
     try:
         with open(imagem_path, 'rb') as f:
-            # CORREÇÃO AQUI: Mudamos 'default' para a variável SESSAO_WAHA corretamente
+            # CORREÇÃO AQUI: Trocamos 'default' pela variável correta SESSAO_WAHA
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
@@ -124,11 +123,12 @@ if 'clientes_processados' not in st.session_state:
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
     with st.spinner("Buscando dados no Google Sheets..."):
         try:
+            # Força fuso horário de Brasília
             fuso = pytz.timezone('America/Sao_Paulo')
             agora = datetime.now(fuso).replace(tzinfo=None)
             
-            # Margem de segurança para pegar o que está acontecendo agora
-            hoje_inicio = agora - timedelta(minutes=15)
+            # Margem de busca: 30 min atrás até 3 horas na frente
+            hoje_inicio = agora - timedelta(minutes=30)
             limite = agora + timedelta(hours=3)
             
             r = requests.get(URL_PLANILHA)
@@ -139,7 +139,7 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             nome_aba = agora.strftime("%d%m%Y")
 
             if nome_aba not in abas_reais:
-                st.error(f"❌ Não achei a aba de hoje ({nome_aba}). Abas lidas: {xls.sheet_names}")
+                st.error(f"❌ Aba de hoje ({nome_aba}) não encontrada.")
                 st.stop()
 
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
@@ -154,28 +154,23 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             def parsing_hora(v):
                 if pd.isna(v): return pd.NaT
                 try:
-                    # Se vier como datetime do pandas/excel
-                    if isinstance(v, (datetime, pd.Timestamp)):
+                    # Se vier como objeto de tempo
+                    if hasattr(v, 'hour'):
                         h, m = v.hour, v.minute
-                    # Se vier como string
                     else:
+                        # Se vier como texto
                         s = str(v).replace('h', ':').strip()
-                        if ':' in s:
-                            t = pd.to_datetime(s)
-                            h, m = t.hour, t.minute
-                        else:
-                            return pd.NaT
+                        t = pd.to_datetime(s)
+                        h, m = t.hour, t.minute
                     return agora.replace(hour=h, minute=m, second=0, microsecond=0)
-                except:
-                    return pd.NaT
+                except: return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(parsing_hora)
-            
             df_filtrado = df[(df['AUX_TIME'] >= hoje_inicio) & (df['AUX_TIME'] <= limite)].copy()
 
             if df_filtrado.empty:
                 st.warning(f"⚠️ Nenhuma viagem nas próximas 3h.")
-                st.write(f"Intervalo de busca: **{hoje_inicio.strftime('%H:%M')}** até **{limite.strftime('%H:%M')}**")
+                st.write(f"Buscando de **{hoje_inicio.strftime('%H:%M')}** até **{limite.strftime('%H:%M')}**")
                 st.stop()
 
             clientes_dict = {}
