@@ -15,8 +15,10 @@ import os
 # ==========================================
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH9lJhzNgDz3x05wnE3lc24YKiUQcn_WTNgxEpsSO2jA36rAwSDfLZUkm1SgE_uoKBXvgx1_8sDTXZ/pub?output=xlsx"
 
+# Coluna usada para o filtro de 3 horas
 COLUNA_FILTRO_HORA = 'INI' 
 
+# Colunas para a planilha final
 COL_PERIODO = 'ENT'           
 COL_HORA = 'INI'              
 COL_LINHA = 'LINHA'           
@@ -120,22 +122,23 @@ if 'clientes_processados' not in st.session_state:
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
     with st.spinner("Buscando dados no Google Sheets..."):
         try:
-            # AJUSTE DE FUSO HORÁRIO COM PANDAS (Evita o erro de comparação)
-            hoje = pd.Timestamp.now(tz='America/Sao_Paulo').replace(tzinfo=None)
-            limite = hoje + pd.Timedelta(hours=3)
+            # Força o horário de Brasília e remove fuso para comparação limpa
+            fuso = pytz.timezone('America/Sao_Paulo')
+            agora = datetime.now(fuso).replace(tzinfo=None)
+            
+            # Pequeno ajuste: se for 11:23, vamos considerar desde 11:20 para não perder viagens que acabaram de começar
+            hoje_inicio = agora - timedelta(minutes=5)
+            limite = agora + timedelta(hours=3)
             
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
             
             xls = pd.ExcelFile(r.content)
             abas_reais = [a.strip() for a in xls.sheet_names]
-            
-            # FORMATO DA ABA: 15042026
-            nome_aba = hoje.strftime("%d%m%Y")
+            nome_aba = agora.strftime("%d%m%Y")
 
             if nome_aba not in abas_reais:
-                st.error(f"❌ Não achei a aba de hoje ({nome_aba}).")
-                st.warning(f"Abas lidas: {xls.sheet_names}")
+                st.error(f"❌ Não achei a aba de hoje ({nome_aba}). Abas lidas: {xls.sheet_names}")
                 st.stop()
 
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
@@ -147,22 +150,32 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
 
-            # Função de tratamento de hora usando o padrão do Pandas
+            # FUNÇÃO DE PARSING REFORÇADA
             def parsing_hora(v):
+                if pd.isna(v): return pd.NaT
                 try:
-                    t = pd.to_datetime(v)
-                    # Força a data para ser a de hoje, mantendo a hora da planilha
-                    return pd.Timestamp(year=hoje.year, month=hoje.month, day=hoje.day,
-                                        hour=t.hour, minute=t.minute)
-                except: return pd.NaT
+                    # Se já for um objeto de tempo/datetime
+                    if hasattr(v, 'hour'):
+                        h, m = v.hour, v.minute
+                    else:
+                        # Se for string "11:30" ou "11h30"
+                        s = str(v).replace('h', ':').strip()
+                        t = pd.to_datetime(s)
+                        h, m = t.hour, t.minute
+                    # Retorna um timestamp com a data de hoje e a hora da planilha
+                    return agora.replace(hour=h, minute=m, second=0, microsecond=0)
+                except:
+                    return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(parsing_hora)
             
-            # Agora a comparação funciona perfeitamente
-            df_filtrado = df[(df['AUX_TIME'] >= hoje) & (df['AUX_TIME'] <= limite)].copy()
+            # Filtro comparando agora com o limite de 3h
+            df_filtrado = df[(df['AUX_TIME'] >= hoje_inicio) & (df['AUX_TIME'] <= limite)].copy()
 
             if df_filtrado.empty:
-                st.warning(f"⚠️ Nenhuma viagem nas próximas 3h (entre {hoje.strftime('%H:%M')} e {limite.strftime('%H:%M')}).")
+                # Se não achou nada, mostramos o que ele tentou buscar para ajudar a debugar
+                st.warning(f"⚠️ Nenhuma viagem nas próximas 3h.")
+                st.write(f"Buscando entre: **{hoje_inicio.strftime('%H:%M')}** e **{limite.strftime('%H:%M')}**")
                 st.stop()
 
             clientes_dict = {}
@@ -180,7 +193,7 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 clientes_dict[cliente_nome] = {
                     "img": img_path,
                     "excel": gerar_planilha_formatada(group_df, cliente_nome),
-                    "data_str": hoje.strftime('%d/%m/%Y')
+                    "data_str": agora.strftime('%d/%m/%Y')
                 }
             
             st.session_state.clientes_processados = clientes_dict
