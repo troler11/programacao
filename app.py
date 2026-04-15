@@ -162,7 +162,7 @@ if st.button("Executar: Filtrar Planilha e Enviar WhatsApp", type="primary"):
                     pass
                 return pd.NaT
 
-            df['FILTRO_TEMPO'] = df['Horas'].apply(formatar_para_tempo_real)
+            df['FILTRO_TEMPO'] = df['INI'].apply(formatar_para_tempo_real)
             df = df[(df['FILTRO_TEMPO'] >= hoje) & (df['FILTRO_TEMPO'] <= limite)]
             df = df.drop(columns=['FILTRO_TEMPO'])
 
