@@ -14,14 +14,14 @@ import os
 # ==========================================
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH9lJhzNgDz3x05wnE3lc24YKiUQcn_WTNgxEpsSO2jA36rAwSDfLZUkm1SgE_uoKBXvgx1_8sDTXZ/pub?output=xlsx"
 
-COLUNA_FILTRO_HORA = 'INI'
+COLUNA_FILTRO_HORA = 'INI' 
 
-COL_PERIODO = 'ENT'
-COL_HORA = 'INI'
-COL_LINHA = 'LINHA'
-COL_EMPRESA = 'CLIENTE'
-COL_PREFIXO = 'FROTA FINAL'
-COL_MOTORISTA = 'MOTORISTA'
+COL_PERIODO = 'ENT'           
+COL_HORA = 'INI'              
+COL_LINHA = 'LINHA'           
+COL_EMPRESA = 'CLIENTE'       
+COL_PREFIXO = 'FROTA FINAL' 
+COL_MOTORISTA = 'MOTORISTA'   
 
 MAPA_LOGOS = {
     "MELI": "logo_meli.png",
@@ -35,12 +35,14 @@ MAPA_GRUPOS = {
     "MELI": "120363000000000000@g.us",
     "AMAZON": "120363000000000001@g.us",
     "ADORO": "120363000000000002@g.us",
-    "AAM": "5511934773679@c.us"
+    "AAM": "5511934773679@c.us" 
 }
 
+# URL pública que você forneceu
 URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
-CHAVE_API_WAHA = "teste"
+# ATENÇÃO: Se não tiver senha no Easypanel, deixe vazio ""
+CHAVE_API_WAHA = "teste" 
 
 # ==========================================
 # FUNÇÕES DE APOIO
@@ -54,22 +56,19 @@ def gerar_planilha_formatada(df, cliente_id):
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
 
     try:
-        # Logo MIMO Esquerda
+        # Logo MIMO
         logo_esq = Image('logo_mimo.png')
-        logo_esq.width = 180  # Tamanho ajustado
-        logo_esq.height = 50
+        logo_esq.width, logo_esq.height = 180, 50
         ws.add_image(logo_esq, 'A2')
 
-        # Logo do Cliente Direita (Posição F)
-        for chave, arquivo_logo in MAPA_LOGOS.items():
+        # Logo Cliente
+        for chave, arquivo in MAPA_LOGOS.items():
             if chave in cliente_id:
-                logo_centro = Image(arquivo_logo)
-                logo_centro.width = 120
-                logo_centro.height = 70
-                ws.add_image(logo_centro, 'F2')
+                logo_c = Image(arquivo)
+                logo_c.width, logo_c.height = 120, 70
+                ws.add_image(logo_c, 'F2')
                 break
-    except Exception as e:
-        print(f"Aviso de imagem: {e}")
+    except: pass
 
     ws.merge_cells('A12:F12')
     ws['A12'] = f"PROGRAMAÇÃO - {cliente_id}"
@@ -77,31 +76,17 @@ def gerar_planilha_formatada(df, cliente_id):
     ws['A12'].alignment = Alignment(horizontal="center")
 
     cabecalhos = ["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"]
-    ws.append([])
-    ws.append(cabecalhos)
-    
+    ws.append([]); ws.append(cabecalhos)
     for col in range(1, 7):
         c = ws.cell(row=14, column=col)
-        c.fill = fill_vermelho
-        c.font = fonte_branca
-        c.alignment = Alignment(horizontal="center")
+        c.fill, c.font, c.alignment = fill_vermelho, fonte_branca, Alignment(horizontal="center")
 
     for _, row in df.iterrows():
-        ws.append([
-            row.get(COL_PERIODO, ''), 
-            row.get(COL_HORA, ''), 
-            row.get(COL_LINHA, ''), 
-            row.get(COL_EMPRESA, ''), 
-            row.get(COL_PREFIXO, ''), 
-            row.get(COL_MOTORISTA, '')
-        ])
+        ws.append([row.get(COL_PERIODO,''), row.get(COL_HORA,''), row.get(COL_LINHA,''), 
+                   row.get(COL_EMPRESA,''), row.get(COL_PREFIXO,''), row.get(COL_MOTORISTA,'')])
     
-    ws.column_dimensions['C'].width = 45
-    ws.column_dimensions['F'].width = 25
-    
-    out = io.BytesIO()
-    wb.save(out)
-    out.seek(0)
+    ws.column_dimensions['C'].width, ws.column_dimensions['F'].width = 45, 25
+    out = io.BytesIO(); wb.save(out); out.seek(0)
     return out
 
 def enviar_waha(imagem_path, nome_empresa, data_str):
@@ -115,18 +100,22 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
     if CHAVE_API_WAHA: 
         headers["X-Api-Key"] = CHAVE_API_WAHA
     
-    params = {'session': SESSAO_WAHA}
-    payload = {'chatId': id_grupo, 'caption': msg}
+    # FORMATO REVISADO: Tudo dentro do payload de dados
+    payload = {
+        'session': SESSAO_WAHA,  # Enviando aqui dentro também
+        'chatId': id_grupo,
+        'caption': msg
+    }
 
     try:
         with open(imagem_path, 'rb') as f:
-            # Correção no envio do arquivo para o WAHA
             files = {'file': ('image.png', f, 'image/png')}
+            # Mudança: Usamos params E data para garantir que o WAHA receba a sessão
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
-                params=params, 
-                data=payload, 
+                params={'session': SESSAO_WAHA}, # Mantém na URL por segurança
+                data=payload,                    # Envia no corpo também
                 files=files
             )
             
@@ -147,7 +136,7 @@ if 'clientes_processados' not in st.session_state:
     st.session_state.clientes_processados = {}
 
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
-    with st.spinner("Processando dados..."):
+    with st.spinner("Lendo Google Sheets..."):
         try:
             hoje = datetime.now()
             r = requests.get(URL_PLANILHA)
@@ -202,7 +191,7 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 }
             
             st.session_state.clientes_processados = clientes_dict
-            st.success(f"✅ {len(clientes_dict)} clientes encontrados!")
+            st.success(f"✅ {len(clientes_dict)} clientes processados!")
 
         except Exception as e:
             st.error(f"❌ Erro: {e}")
