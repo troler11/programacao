@@ -90,25 +90,45 @@ def gerar_planilha_formatada(df, cliente_id):
 
 def enviar_waha(imagem_path, nome_empresa, data_str):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
-    if not id_grupo: return f"⚠️ Grupo não configurado para: {nome_empresa}"
+    if not id_grupo: 
+        return f"⚠️ Grupo não configurado para: {nome_empresa}"
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
-    headers = {"accept": "application/json"}
-    if CHAVE_API_WAHA: headers["X-Api-Key"] = CHAVE_API_WAHA
     
+    # Se você NÃO colocou senha no Easypanel, deixe CHAVE_API_WAHA = "" no topo do código
+    headers = {"accept": "application/json"}
+    if CHAVE_API_WAHA: 
+        headers["X-Api-Key"] = CHAVE_API_WAHA
+    
+    # O segredo: Colocar a session em dois lugares para não ter erro
+    params = {'session': SESSAO_WAHA}
+    payload = {
+        'chatId': id_grupo, 
+        'caption': msg,
+        'session': SESSAO_WAHA  # Alguns servidores WAHA pedem aqui dentro também
+    }
+
     try:
         with open(imagem_path, 'rb') as f:
-            # CORREÇÃO AQUI: Trocamos 'default' pela variável correta SESSAO_WAHA
+            # Enviamos o arquivo exatamente como o WAHA espera
+            files = {'file': ('filename.png', f, 'image/png')}
+            
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
-                params={'session': SESSAO_WAHA}, 
-                data={'chatId': id_grupo, 'caption': msg}, 
-                files={'file': ('image.png', f, 'image/png')}
+                params=params, 
+                data=payload, 
+                files=files
             )
-        if resp.status_code in [200, 201]: return "✅ Enviado com sucesso!"
-        return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
-    except Exception as e: return f"❌ Falha de conexão: {e}"
+            
+        if resp.status_code in [200, 201]:
+            return "✅ Enviado com sucesso!"
+        else:
+            # Se der erro, ele vai te mostrar exatamente o que o WAHA respondeu
+            return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
+            
+    except Exception as e:
+        return f"❌ Falha de conexão: {e}"
 
 # ==========================================
 # INTERFACE PRINCIPAL
