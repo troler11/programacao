@@ -28,7 +28,7 @@ MAPA_LOGOS = {
     "MERCADO LIVRE": "logo_meli.png",
     "AMAZON": "logo_amazon.png",
     "ADORO": "logo_adoro.png",
-    "AAM": "logo_aam.png"
+    "AAM": "logo_aam.png" 
 }
 
 MAPA_GRUPOS = {
@@ -54,10 +54,12 @@ def gerar_planilha_formatada(df, cliente_id):
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
 
     try:
+        # Logo MIMO Esquerda (Tamanho ajustado)
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
         ws.add_image(logo_esq, 'A2')
 
+        # Logo Cliente Direita
         for chave, arquivo in MAPA_LOGOS.items():
             if chave in cliente_id:
                 logo_c = Image(arquivo)
@@ -117,38 +119,35 @@ if 'clientes_processados' not in st.session_state:
     st.session_state.clientes_processados = {}
 
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
-    with st.spinner("Lendo Planilha do Google..."):
+    with st.spinner("Buscando dados no Google Sheets..."):
         try:
             hoje = datetime.now()
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
             
             xls = pd.ExcelFile(r.content)
+            abas_no_arquivo = [a.strip() for a in xls.sheet_names]
             
-            # NOVOS FORMATOS DE BUSCA (Mais flexíveis)
+            # FORMATOS SEM BARRA (Como o Excel salva)
             formatos = [
-                hoje.strftime("%d/%m/%Y"), # 15/04/2026
-                hoje.strftime("%d/%m/%y"), # 15/04/26
-                hoje.strftime("%d/%m"),    # 15/04
+                hoje.strftime("%d %m %Y"), # 15 04 2026
+                hoje.strftime("%d_%m_%Y"), # 15_04_2026
                 hoje.strftime("%d-%m-%Y"), # 15-04-2026
-                hoje.strftime("%d_%m_%Y")  # 15_04_2026
+                hoje.strftime("%d%m%Y"),   # 15042026
+                hoje.strftime("%d/%m/%Y")  # Tenta com barra por via das dúvidas
             ]
             
-            # Tenta achar a aba removendo espaços invisíveis
-            abas_reais = [a.strip() for a in xls.sheet_names]
-            nome_aba = next((f for f in formatos if f in abas_reais), None)
+            nome_aba = next((f for f in formatos if f in abas_no_arquivo), None)
 
             if not nome_aba:
-                st.error(f"❌ Não achei a aba de hoje ({hoje.strftime('%d/%m/%Y')}).")
-                st.warning(f"As abas encontradas no seu arquivo foram: {xls.sheet_names}")
-                st.info("Certifique-se de que o nome da aba no Google Sheets é exatamente a data de hoje.")
+                st.error(f"❌ Não achei a aba de hoje.")
+                st.warning(f"Abas lidas do Excel: {xls.sheet_names}")
                 st.stop()
 
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
             linha_cabecalho = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
             
-            if linha_cabecalho is None: 
-                st.error("❌ Não achei a linha onde começam os dados (cabeçalho)."); st.stop()
+            if linha_cabecalho is None: st.error("❌ Cabeçalho não encontrado."); st.stop()
                 
             df = df_bruto.iloc[linha_cabecalho + 1:].reset_index(drop=True)
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
@@ -165,7 +164,7 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df_filtrado = df[(df['AUX_TIME'] >= hoje) & (df['AUX_TIME'] <= limite)].copy()
 
             if df_filtrado.empty:
-                st.warning(f"⚠️ Nenhuma viagem nas próximas 3 horas (entre {hoje.strftime('%H:%M')} e {limite.strftime('%H:%M')})."); st.stop()
+                st.warning(f"⚠️ Nenhuma viagem nas próximas 3 horas ({hoje.strftime('%H:%M')} às {limite.strftime('%H:%M')})."); st.stop()
 
             clientes_dict = {}
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
@@ -186,7 +185,7 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 }
             
             st.session_state.clientes_processados = clientes_dict
-            st.success(f"✅ {len(clientes_dict)} clientes processados!")
+            st.success(f"✅ {len(clientes_dict)} clientes encontrados!")
 
         except Exception as e:
             st.error(f"❌ Erro: {e}")
@@ -202,4 +201,4 @@ if st.session_state.clientes_processados:
                     if "✅" in res: st.success(res)
                     else: st.error(res)
             with c2:
-                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome}.xlsx", key=f"dl_{nome}")
+                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome.replace('/', '_')}.xlsx", key=f"dl_{nome}")
