@@ -4,19 +4,19 @@ FROM python:3.10-slim
 # 2. Define a pasta de trabalho dentro do servidor/container
 WORKDIR /app
 
-# 3. Instala dependências do Linux necessárias para gerar a imagem da tabela
+# 3. Instala dependências do Linux necessárias (Nomes atualizados)
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Copia o arquivo de requisitos primeiro (ajuda a deixar o processo mais rápido)
+# 4. Copia o arquivo de requisitos primeiro
 COPY requirements.txt .
 
 # 5. Instala as bibliotecas do Python listadas no requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 6. Copia todo o resto dos seus arquivos (app.py, imagens dos logos, etc)
+# 6. Copia todo o resto dos seus arquivos
 COPY . .
 
 # 7. Informa ao servidor que o Streamlit usará a porta 8501
