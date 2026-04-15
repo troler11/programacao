@@ -27,7 +27,8 @@ MAPA_LOGOS = {
     "MELI": "logo_meli.png",
     "MERCADO LIVRE": "logo_meli.png",
     "AMAZON": "logo_amazon.png",
-    "ADORO": "logo_adoro.png" 
+    "ADORO": "logo_adoro.png",
+    "AAM": "logo_aam.png" 
 }
 
 MAPA_GRUPOS = {
