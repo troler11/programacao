@@ -55,13 +55,13 @@ def gerar_planilha_formatada(df, cliente_id):
         # Logo MIMO Esquerda
         logo_esq = Image('logo_mimo.png')
         logo_esq.width = 220  # Ajuste a largura aqui se precisar
-        logo_esq.height = 80  # Ajuste a altura aqui se precisar
+        logo_esq.height = 60  # Ajuste a altura aqui se precisar
         ws.add_image(logo_esq, 'A1')
         
         # Logo MIMO Direita
         logo_dir = Image('logo_mimo.png')
         logo_dir.width = 220
-        logo_dir.height = 80
+        logo_dir.height = 60
         ws.add_image(logo_dir, 'F1')
         
         # Logo do Cliente Central
