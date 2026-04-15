@@ -15,10 +15,8 @@ import os
 # ==========================================
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH9lJhzNgDz3x05wnE3lc24YKiUQcn_WTNgxEpsSO2jA36rAwSDfLZUkm1SgE_uoKBXvgx1_8sDTXZ/pub?output=xlsx"
 
-# Coluna usada para o filtro de 3 horas
 COLUNA_FILTRO_HORA = 'INI' 
 
-# Colunas para a planilha final
 COL_PERIODO = 'ENT'           
 COL_HORA = 'INI'              
 COL_LINHA = 'LINHA'           
@@ -43,6 +41,7 @@ MAPA_GRUPOS = {
 
 URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
+# Se você não usa senha no Easypanel, deixe "" vazio.
 CHAVE_API_WAHA = "teste" 
 
 # ==========================================
@@ -57,10 +56,12 @@ def gerar_planilha_formatada(df, cliente_id):
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
 
     try:
+        # Logo MIMO Esquerda
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
         ws.add_image(logo_esq, 'A2')
 
+        # Logo Cliente Direita
         for chave, arquivo in MAPA_LOGOS.items():
             if chave in cliente_id:
                 logo_c = Image(arquivo)
@@ -98,10 +99,11 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
     
     try:
         with open(imagem_path, 'rb') as f:
+            # CORREÇÃO AQUI: Mudamos 'default' para a variável SESSAO_WAHA corretamente
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
-                params={'session': 'default'}, 
+                params={'session': SESSAO_WAHA}, 
                 data={'chatId': id_grupo, 'caption': msg}, 
                 files={'file': ('image.png', f, 'image/png')}
             )
@@ -122,12 +124,11 @@ if 'clientes_processados' not in st.session_state:
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
     with st.spinner("Buscando dados no Google Sheets..."):
         try:
-            # Força o horário de Brasília e remove fuso para comparação limpa
             fuso = pytz.timezone('America/Sao_Paulo')
             agora = datetime.now(fuso).replace(tzinfo=None)
             
-            # Pequeno ajuste: se for 11:23, vamos considerar desde 11:20 para não perder viagens que acabaram de começar
-            hoje_inicio = agora - timedelta(minutes=5)
+            # Margem de segurança para pegar o que está acontecendo agora
+            hoje_inicio = agora - timedelta(minutes=15)
             limite = agora + timedelta(hours=3)
             
             r = requests.get(URL_PLANILHA)
@@ -150,32 +151,31 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
 
-            # FUNÇÃO DE PARSING REFORÇADA
             def parsing_hora(v):
                 if pd.isna(v): return pd.NaT
                 try:
-                    # Se já for um objeto de tempo/datetime
-                    if hasattr(v, 'hour'):
+                    # Se vier como datetime do pandas/excel
+                    if isinstance(v, (datetime, pd.Timestamp)):
                         h, m = v.hour, v.minute
+                    # Se vier como string
                     else:
-                        # Se for string "11:30" ou "11h30"
                         s = str(v).replace('h', ':').strip()
-                        t = pd.to_datetime(s)
-                        h, m = t.hour, t.minute
-                    # Retorna um timestamp com a data de hoje e a hora da planilha
+                        if ':' in s:
+                            t = pd.to_datetime(s)
+                            h, m = t.hour, t.minute
+                        else:
+                            return pd.NaT
                     return agora.replace(hour=h, minute=m, second=0, microsecond=0)
                 except:
                     return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(parsing_hora)
             
-            # Filtro comparando agora com o limite de 3h
             df_filtrado = df[(df['AUX_TIME'] >= hoje_inicio) & (df['AUX_TIME'] <= limite)].copy()
 
             if df_filtrado.empty:
-                # Se não achou nada, mostramos o que ele tentou buscar para ajudar a debugar
                 st.warning(f"⚠️ Nenhuma viagem nas próximas 3h.")
-                st.write(f"Buscando entre: **{hoje_inicio.strftime('%H:%M')}** e **{limite.strftime('%H:%M')}**")
+                st.write(f"Intervalo de busca: **{hoje_inicio.strftime('%H:%M')}** até **{limite.strftime('%H:%M')}**")
                 st.stop()
 
             clientes_dict = {}
