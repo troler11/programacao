@@ -23,26 +23,15 @@ COL_EMPRESA = 'CLIENTE'
 COL_PREFIXO = 'FROTA FINAL' 
 COL_MOTORISTA = 'MOTORISTA'   
 
-MAPA_LOGOS = {
-    "MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png",
-    "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", "AAM": "logo_aam.png" 
-}
+MAPA_LOGOS = {"MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png", "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", "AAM": "logo_aam.png"}
+MAPA_GRUPOS = {"MELI": "120363000000000000@g.us", "AMAZON": "120363000000000001@g.us", "ADORO": "120363000000000002@g.us", "AAM": "5511934773679@c.us"}
 
-MAPA_GRUPOS = {
-    "MELI": "120363000000000000@g.us",
-    "AMAZON": "120363000000000001@g.us",
-    "ADORO": "120363000000000002@g.us",
-    "AAM": "5511934773679@c.us" 
-}
-
-# Use a sua URL pública do Easypanel
 URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
-# Se você não definiu senha no Easypanel, deixe ""
-CHAVE_API_WAHA = "teste" 
+CHAVE_API_WAHA = "teste"
 
 # ==========================================
-# FUNÇÕES
+# FUNÇÕES DE APOIO
 # ==========================================
 
 def gerar_planilha_formatada(df, cliente_id):
@@ -51,7 +40,6 @@ def gerar_planilha_formatada(df, cliente_id):
     fill_vermelho = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
     fonte_branca = Font(color="FFFFFF", bold=True)
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
-
     try:
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
@@ -63,22 +51,16 @@ def gerar_planilha_formatada(df, cliente_id):
                 ws.add_image(logo_c, 'F2')
                 break
     except: pass
-
     ws.merge_cells('A12:F12')
     ws['A12'] = f"PROGRAMAÇÃO - {cliente_id}"
     ws['A12'].font = fonte_vermelha_titulo
     ws['A12'].alignment = Alignment(horizontal="center")
-
-    cabecalhos = ["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"]
-    ws.append([]); ws.append(cabecalhos)
+    ws.append([]); ws.append(["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"])
     for col in range(1, 7):
         c = ws.cell(row=14, column=col)
         c.fill, c.font, c.alignment = fill_vermelho, fonte_branca, Alignment(horizontal="center")
-
     for _, row in df.iterrows():
-        ws.append([row.get(COL_PERIODO,''), row.get(COL_HORA,''), row.get(COL_LINHA,''), 
-                   row.get(COL_EMPRESA,''), row.get(COL_PREFIXO,''), row.get(COL_MOTORISTA,'')])
-    
+        ws.append([row.get(COL_PERIODO,''), row.get(COL_HORA,''), row.get(COL_LINHA,''), row.get(COL_EMPRESA,''), row.get(COL_PREFIXO,''), row.get(COL_MOTORISTA,'')])
     ws.column_dimensions['C'].width, ws.column_dimensions['F'].width = 45, 25
     out = io.BytesIO(); wb.save(out); out.seek(0)
     return out
@@ -86,36 +68,12 @@ def gerar_planilha_formatada(df, cliente_id):
 def enviar_waha(imagem_path, nome_empresa, data_str):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
     if not id_grupo: return f"⚠️ Grupo não configurado para: {nome_empresa}"
-
-    msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
-    
-    # IMPORTANTE: No envio de ARQUIVOS, o Content-Type é gerado automaticamente.
-    # Se você forçar 'application/json' aqui, o WAHA dá erro 400.
     headers = {"accept": "application/json"}
-    if CHAVE_API_WAHA: 
-        headers["X-Api-Key"] = CHAVE_API_WAHA
-    
-    # Payload para envio de MULTIPART (Formulário)
-    payload = {
-        'session': SESSAO_WAHA,
-        'chatId': id_grupo,
-        'caption': msg
-    }
-
+    if CHAVE_API_WAHA: headers["X-Api-Key"] = CHAVE_API_WAHA
+    msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     try:
         with open(imagem_path, 'rb') as f:
-            # O nome do campo deve ser 'file'
-            files = {'file': ('escala.png', f, 'image/png')}
-            
-            # Passamos a session também na URL (params) para garantir 100%
-            resp = requests.post(
-                URL_WAHA, 
-                headers=headers,
-                params={'session': SESSAO_WAHA}, 
-                data=payload, 
-                files=files
-            )
-            
+            resp = requests.post(URL_WAHA, headers=headers, params={'session': SESSAO_WAHA}, data={'chatId': id_grupo, 'caption': msg}, files={'file': ('image.png', f, 'image/png')})
         if resp.status_code in [200, 201]: return "✅ Enviado com sucesso!"
         return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
     except Exception as e: return f"❌ Falha de conexão: {e}"
@@ -131,16 +89,17 @@ if 'clientes_processados' not in st.session_state:
     st.session_state.clientes_processados = {}
 
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
-    with st.spinner("Processando..."):
+    with st.spinner("Analisando planilha..."):
         try:
             fuso = pytz.timezone('America/Sao_Paulo')
             agora = datetime.now(fuso).replace(tzinfo=None)
-            hoje_inicio = agora - timedelta(minutes=15)
-            limite = agora + timedelta(hours=3)
+            
+            # Margem: Busca desde 20 min atrás até 3 horas na frente
+            inicio_filtro = agora - timedelta(minutes=20)
+            fim_filtro = agora + timedelta(hours=3)
             
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
-            
             xls = pd.ExcelFile(r.content)
             nome_aba = agora.strftime("%d%m%Y")
 
@@ -154,17 +113,33 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
 
-            def parsing_hora(v):
+            # CONVERSOR DE HORA ULTRA-RESISTENTE
+            def converter_tempo(v):
+                if pd.isna(v): return pd.NaT
                 try:
-                    t = pd.to_datetime(v)
-                    return agora.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
-                except: return pd.NaT
+                    # Se vier como tempo do Excel (datetime)
+                    if hasattr(v, 'hour'):
+                        dt = v
+                    else:
+                        # Se vier como texto "12:00" ou "12h00"
+                        s = str(v).replace('h', ':').strip()
+                        dt = pd.to_datetime(s)
+                    # Cria a data de hoje com a hora da planilha
+                    return agora.replace(hour=dt.hour, minute=dt.minute, second=0, microsecond=0)
+                except:
+                    return pd.NaT
 
-            df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(parsing_hora)
-            df_filtrado = df[(df['AUX_TIME'] >= hoje_inicio) & (df['AUX_TIME'] <= limite)].copy()
+            df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(converter_tempo)
+            
+            # Filtro
+            df_filtrado = df[(df['AUX_TIME'] >= inicio_filtro) & (df['AUX_TIME'] <= fim_filtro)].copy()
 
             if df_filtrado.empty:
-                st.warning(f"⚠️ Nenhuma viagem nas próximas 3h."); st.stop()
+                st.warning(f"⚠️ Nenhuma viagem encontrada entre {inicio_filtro.strftime('%H:%M')} e {fim_filtro.strftime('%H:%M')}.")
+                # DEBUG: Mostra as primeiras 5 horas que o robô tentou ler
+                st.write("Horários detectados na planilha (primeiros 5):")
+                st.write(df[[COLUNA_FILTRO_HORA, 'AUX_TIME']].head(5))
+                st.stop()
 
             clientes_dict = {}
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
@@ -172,8 +147,8 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 nome_seguro = cliente_nome.replace("/", "_").replace(":", "_")
                 img_path = f"escala_{nome_seguro}.png"
                 
-                cols = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in group_df.columns]
-                style = group_df[cols].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
+                cols_print = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in group_df.columns]
+                style = group_df[cols_print].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
                     .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
                 
                 dfi.export(style, img_path, table_conversion="matplotlib", max_rows=-1)
