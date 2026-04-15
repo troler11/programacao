@@ -52,13 +52,28 @@ def gerar_planilha_formatada(df, cliente_id):
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
 
     try:
-        ws.add_image(Image('logo_mimo.png'), 'A1')
-        ws.add_image(Image('logo_mimo.png'), 'F1')
-        for chave, logo in MAPA_LOGOS.items():
+        # Logo MIMO Esquerda
+        logo_esq = Image('logo_mimo.png')
+        logo_esq.width = 220  # Ajuste a largura aqui se precisar
+        logo_esq.height = 80  # Ajuste a altura aqui se precisar
+        ws.add_image(logo_esq, 'A1')
+        
+        # Logo MIMO Direita
+        logo_dir = Image('logo_mimo.png')
+        logo_dir.width = 220
+        logo_dir.height = 80
+        ws.add_image(logo_dir, 'F1')
+        
+        # Logo do Cliente Central
+        for chave, arquivo_logo in MAPA_LOGOS.items():
             if chave in cliente_id:
-                ws.add_image(Image(logo), 'C1')
+                logo_centro = Image(arquivo_logo)
+                logo_centro.width = 160 # Largura do logo do cliente
+                logo_centro.height = 100 # Altura do logo do cliente
+                ws.add_image(logo_centro, 'C1')
                 break
-    except: pass
+    except Exception as e:
+        print(f"Erro ao carregar imagens: {e}")
 
     ws.merge_cells('A12:F12')
     ws['A12'] = f"PROGRAMAÇÃO - {cliente_id}"
@@ -66,10 +81,14 @@ def gerar_planilha_formatada(df, cliente_id):
     ws['A12'].alignment = Alignment(horizontal="center")
 
     cabecalhos = ["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"]
-    ws.append([]); ws.append(cabecalhos)
+    ws.append([])
+    ws.append(cabecalhos)
+    
     for col in range(1, 7):
         c = ws.cell(row=14, column=col)
-        c.fill, c.font, c.alignment = fill_vermelho, fonte_branca, Alignment(horizontal="center")
+        c.fill = fill_vermelho
+        c.font = fonte_branca
+        c.alignment = Alignment(horizontal="center")
 
     for _, row in df.iterrows():
         ws.append([
@@ -81,8 +100,12 @@ def gerar_planilha_formatada(df, cliente_id):
             row.get(COL_MOTORISTA, '')
         ])
     
-    ws.column_dimensions['C'].width, ws.column_dimensions['F'].width = 50, 25
-    out = io.BytesIO(); wb.save(out); out.seek(0)
+    ws.column_dimensions['C'].width = 50
+    ws.column_dimensions['F'].width = 25
+    
+    out = io.BytesIO()
+    wb.save(out)
+    out.seek(0)
     return out
 
 def enviar_waha(imagem_path, nome_empresa, data_str):
@@ -164,11 +187,9 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
                 cliente_nome = str(cliente).strip().upper()
                 
-                # CORREÇÃO AQUI: Troca barras e contra-barras por um underline seguro
                 nome_seguro_arquivo = cliente_nome.replace("/", "_").replace("\\", "_").replace(":", "_")
                 img_path = f"escala_{nome_seguro_arquivo}_{hoje.strftime('%H%M')}.png"
                 
-                # Gera print específico deste cliente
                 colunas_print = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in group_df.columns]
                 style = group_df[colunas_print].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
                     .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
