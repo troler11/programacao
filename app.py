@@ -116,7 +116,7 @@ if st.button("Filtrar e Enviar para o WhatsApp", type="primary"):
                     return datetime.combine(hoje.date(), t.time() if hasattr(t, 'time') else t)
                 except: return pd.NaT
 
-            df['AUX_TIME'] = df['Horas'].apply(parsing_hora)
+            df['AUX_TIME'] = df['INI'].apply(parsing_hora)
             df = df[(df['AUX_TIME'] >= hoje) & (df['AUX_TIME'] <= limite)].drop(columns=['AUX_TIME'])
 
             if df.empty:
