@@ -34,12 +34,13 @@ MAPA_LOGOS = {
 MAPA_GRUPOS = {
     "MELI": "120363000000000000@g.us",
     "AMAZON": "120363000000000001@g.us",
-    "ADORO": "120363000000000002@g.us" 
+    "ADORO": "120363000000000002@g.us",
+    "AAM": "5511934773679@c.us" 
 }
 
-URL_WAHA = "http://waha:3000/api/sendImage"
+URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
-CHAVE_API_WAHA = "" 
+CHAVE_API_WAHA = "teste" 
 
 # ==========================================
 # FUNÇÕES DE APOIO
