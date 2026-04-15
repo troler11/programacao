@@ -27,13 +27,13 @@ MAPA_LOGOS = {
     "MELI": "logo_meli.png",
     "MERCADO LIVRE": "logo_meli.png",
     "AMAZON": "logo_amazon.png",
-    "ADORO": "logo_adoro.png" # Adicione o logo aqui
+    "ADORO": "logo_adoro.png" 
 }
 
 MAPA_GRUPOS = {
     "MELI": "120363000000000000@g.us",
     "AMAZON": "120363000000000001@g.us",
-    "ADORO": "120363000000000002@g.us" # Adicione o ID do grupo Adoro aqui
+    "ADORO": "120363000000000002@g.us" 
 }
 
 URL_WAHA = "http://waha:3000/api/sendImage"
@@ -163,7 +163,10 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             clientes_dict = {}
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
                 cliente_nome = str(cliente).strip().upper()
-                img_path = f"escala_{cliente_nome}_{hoje.strftime('%H%M')}.png"
+                
+                # CORREÇÃO AQUI: Troca barras e contra-barras por um underline seguro
+                nome_seguro_arquivo = cliente_nome.replace("/", "_").replace("\\", "_").replace(":", "_")
+                img_path = f"escala_{nome_seguro_arquivo}_{hoje.strftime('%H%M')}.png"
                 
                 # Gera print específico deste cliente
                 colunas_print = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in group_df.columns]
@@ -193,6 +196,9 @@ if st.session_state.clientes_processados:
             with c1:
                 if st.button(f"📲 Enviar WhatsApp: {nome}", key=f"btn_{nome}"):
                     res = enviar_waha(dados["img"], nome, dados["data_str"])
-                    st.write(res)
+                    if "✅" in res:
+                        st.success(res)
+                    else:
+                        st.error(res)
             with c2:
-                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome}.xlsx", key=f"dl_{nome}")
+                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome.replace('/', '_')}.xlsx", key=f"dl_{nome}")
