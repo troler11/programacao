@@ -11,12 +11,11 @@ from openpyxl.drawing.image import Image
 import os
 
 # ==========================================
-# CONFIGURAÇÕES DA EMPRESA E PLANILHA
+# CONFIGURAÇÕES
 # ==========================================
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH9lJhzNgDz3x05wnE3lc24YKiUQcn_WTNgxEpsSO2jA36rAwSDfLZUkm1SgE_uoKBXvgx1_8sDTXZ/pub?output=xlsx"
 
 COLUNA_FILTRO_HORA = 'INI' 
-
 COL_PERIODO = 'ENT'           
 COL_HORA = 'INI'              
 COL_LINHA = 'LINHA'           
@@ -25,11 +24,8 @@ COL_PREFIXO = 'FROTA FINAL'
 COL_MOTORISTA = 'MOTORISTA'   
 
 MAPA_LOGOS = {
-    "MELI": "logo_meli.png",
-    "MERCADO LIVRE": "logo_meli.png",
-    "AMAZON": "logo_amazon.png",
-    "ADORO": "logo_adoro.png",
-    "AAM": "logo_aam.png" 
+    "MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png",
+    "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", "AAM": "logo_aam.png" 
 }
 
 MAPA_GRUPOS = {
@@ -39,14 +35,14 @@ MAPA_GRUPOS = {
     "AAM": "5511934773679@c.us" 
 }
 
+# Use a sua URL pública do Easypanel
 URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
-
-# IMPORTANTE: Se você não criou uma chave no Easypanel, deixe "" vazio.
+# Se você não definiu senha no Easypanel, deixe ""
 CHAVE_API_WAHA = "teste" 
 
 # ==========================================
-# FUNÇÕES DE APOIO
+# FUNÇÕES
 # ==========================================
 
 def gerar_planilha_formatada(df, cliente_id):
@@ -60,7 +56,6 @@ def gerar_planilha_formatada(df, cliente_id):
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
         ws.add_image(logo_esq, 'A2')
-
         for chave, arquivo in MAPA_LOGOS.items():
             if chave in cliente_id:
                 logo_c = Image(arquivo)
@@ -90,48 +85,43 @@ def gerar_planilha_formatada(df, cliente_id):
 
 def enviar_waha(imagem_path, nome_empresa, data_str):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
-    if not id_grupo: 
-        return f"⚠️ Grupo não configurado para: {nome_empresa}"
+    if not id_grupo: return f"⚠️ Grupo não configurado para: {nome_empresa}"
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    # Se você NÃO colocou senha no Easypanel, deixe CHAVE_API_WAHA = "" no topo do código
+    # IMPORTANTE: No envio de ARQUIVOS, o Content-Type é gerado automaticamente.
+    # Se você forçar 'application/json' aqui, o WAHA dá erro 400.
     headers = {"accept": "application/json"}
     if CHAVE_API_WAHA: 
         headers["X-Api-Key"] = CHAVE_API_WAHA
     
-    # O segredo: Colocar a session em dois lugares para não ter erro
-    params = {'session': SESSAO_WAHA}
+    # Payload para envio de MULTIPART (Formulário)
     payload = {
-        'chatId': id_grupo, 
-        'caption': msg,
-        'session': SESSAO_WAHA  # Alguns servidores WAHA pedem aqui dentro também
+        'session': SESSAO_WAHA,
+        'chatId': id_grupo,
+        'caption': msg
     }
 
     try:
         with open(imagem_path, 'rb') as f:
-            # Enviamos o arquivo exatamente como o WAHA espera
-            files = {'file': ('filename.png', f, 'image/png')}
+            # O nome do campo deve ser 'file'
+            files = {'file': ('escala.png', f, 'image/png')}
             
+            # Passamos a session também na URL (params) para garantir 100%
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
-                params=params, 
+                params={'session': SESSAO_WAHA}, 
                 data=payload, 
                 files=files
             )
             
-        if resp.status_code in [200, 201]:
-            return "✅ Enviado com sucesso!"
-        else:
-            # Se der erro, ele vai te mostrar exatamente o que o WAHA respondeu
-            return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
-            
-    except Exception as e:
-        return f"❌ Falha de conexão: {e}"
+        if resp.status_code in [200, 201]: return "✅ Enviado com sucesso!"
+        return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
+    except Exception as e: return f"❌ Falha de conexão: {e}"
 
 # ==========================================
-# INTERFACE PRINCIPAL
+# INTERFACE
 # ==========================================
 
 st.set_page_config(page_title="Gestão Mimo", layout="centered")
@@ -141,57 +131,40 @@ if 'clientes_processados' not in st.session_state:
     st.session_state.clientes_processados = {}
 
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
-    with st.spinner("Buscando dados no Google Sheets..."):
+    with st.spinner("Processando..."):
         try:
-            # Força fuso horário de Brasília
             fuso = pytz.timezone('America/Sao_Paulo')
             agora = datetime.now(fuso).replace(tzinfo=None)
-            
-            # Margem de busca: 30 min atrás até 3 horas na frente
-            hoje_inicio = agora - timedelta(minutes=30)
+            hoje_inicio = agora - timedelta(minutes=15)
             limite = agora + timedelta(hours=3)
             
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
             
             xls = pd.ExcelFile(r.content)
-            abas_reais = [a.strip() for a in xls.sheet_names]
             nome_aba = agora.strftime("%d%m%Y")
 
-            if nome_aba not in abas_reais:
-                st.error(f"❌ Aba de hoje ({nome_aba}) não encontrada.")
-                st.stop()
+            if nome_aba not in [a.strip() for a in xls.sheet_names]:
+                st.error(f"❌ Aba {nome_aba} não encontrada."); st.stop()
 
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
             linha_cabecalho = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
             
-            if linha_cabecalho is None: st.error("❌ Cabeçalho não encontrado."); st.stop()
-                
             df = df_bruto.iloc[linha_cabecalho + 1:].reset_index(drop=True)
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
 
             def parsing_hora(v):
-                if pd.isna(v): return pd.NaT
                 try:
-                    # Se vier como objeto de tempo
-                    if hasattr(v, 'hour'):
-                        h, m = v.hour, v.minute
-                    else:
-                        # Se vier como texto
-                        s = str(v).replace('h', ':').strip()
-                        t = pd.to_datetime(s)
-                        h, m = t.hour, t.minute
-                    return agora.replace(hour=h, minute=m, second=0, microsecond=0)
+                    t = pd.to_datetime(v)
+                    return agora.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
                 except: return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(parsing_hora)
             df_filtrado = df[(df['AUX_TIME'] >= hoje_inicio) & (df['AUX_TIME'] <= limite)].copy()
 
             if df_filtrado.empty:
-                st.warning(f"⚠️ Nenhuma viagem nas próximas 3h.")
-                st.write(f"Buscando de **{hoje_inicio.strftime('%H:%M')}** até **{limite.strftime('%H:%M')}**")
-                st.stop()
+                st.warning(f"⚠️ Nenhuma viagem nas próximas 3h."); st.stop()
 
             clientes_dict = {}
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
@@ -199,23 +172,17 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 nome_seguro = cliente_nome.replace("/", "_").replace(":", "_")
                 img_path = f"escala_{nome_seguro}.png"
                 
-                cols_print = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in group_df.columns]
-                style = group_df[cols_print].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
+                cols = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in group_df.columns]
+                style = group_df[cols].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
                     .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
                 
                 dfi.export(style, img_path, table_conversion="matplotlib", max_rows=-1)
-                
                 clientes_dict[cliente_nome] = {
-                    "img": img_path,
-                    "excel": gerar_planilha_formatada(group_df, cliente_nome),
-                    "data_str": agora.strftime('%d/%m/%Y')
+                    "img": img_path, "excel": gerar_planilha_formatada(group_df, cliente_nome), "data_str": agora.strftime('%d/%m/%Y')
                 }
-            
             st.session_state.clientes_processados = clientes_dict
             st.success(f"✅ {len(clientes_dict)} clientes encontrados!")
-
-        except Exception as e:
-            st.error(f"❌ Erro no processamento: {e}")
+        except Exception as e: st.error(f"❌ Erro: {e}")
 
 if st.session_state.clientes_processados:
     for nome, dados in st.session_state.clientes_processados.items():
@@ -225,7 +192,6 @@ if st.session_state.clientes_processados:
             with c1:
                 if st.button(f"📲 Enviar WhatsApp: {nome}", key=f"btn_{nome}"):
                     res = enviar_waha(dados["img"], nome, dados["data_str"])
-                    if "✅" in res: st.success(res)
-                    else: st.error(res)
+                    st.write(res)
             with c2:
-                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome.replace('/', '_')}.xlsx", key=f"dl_{nome}")
+                st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome}.xlsx", key=f"dl_{nome}")
