@@ -101,7 +101,7 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
-                params={'session': SESSAO_WAHA}, 
+                params={'session': default}, 
                 data={'chatId': id_grupo, 'caption': msg}, 
                 files={'file': ('image.png', f, 'image/png')}
             )
