@@ -4,6 +4,7 @@ import requests
 import io
 import dataframe_image as dfi
 from datetime import datetime, timedelta
+import pytz  # Biblioteca para ajustar o fuso horário
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.drawing.image import Image
@@ -54,7 +55,7 @@ def gerar_planilha_formatada(df, cliente_id):
     fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
 
     try:
-        # Logo MIMO Esquerda (Tamanho ajustado)
+        # Logo MIMO Esquerda
         logo_esq = Image('logo_mimo.png')
         logo_esq.width, logo_esq.height = 180, 50
         ws.add_image(logo_esq, 'A2')
@@ -121,27 +122,29 @@ if 'clientes_processados' not in st.session_state:
 if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
     with st.spinner("Buscando dados no Google Sheets..."):
         try:
-            hoje = datetime.now()
+            # AJUSTE DE FUSO HORÁRIO PARA SÃO PAULO
+            fuso = pytz.timezone('America/Sao_Paulo')
+            hoje = datetime.now(fuso)
+            
             r = requests.get(URL_PLANILHA)
             r.raise_for_status()
             
             xls = pd.ExcelFile(r.content)
-            abas_no_arquivo = [a.strip() for a in xls.sheet_names]
+            abas_reais = [a.strip() for a in xls.sheet_names]
             
-            # FORMATOS SEM BARRA (Como o Excel salva)
+            # FORMATO ENCONTRADO NO SEU LOG: 15042026
             formatos = [
+                hoje.strftime("%d%m%Y"),   # 15042026 (O formato que você confirmou)
+                hoje.strftime("%d/%m/%Y"), # 15/04/2026
                 hoje.strftime("%d %m %Y"), # 15 04 2026
-                hoje.strftime("%d_%m_%Y"), # 15_04_2026
-                hoje.strftime("%d-%m-%Y"), # 15-04-2026
-                hoje.strftime("%d%m%Y"),   # 15042026
-                hoje.strftime("%d/%m/%Y")  # Tenta com barra por via das dúvidas
+                hoje.strftime("%d_%m_%Y")  # 15_04_2026
             ]
             
-            nome_aba = next((f for f in formatos if f in abas_no_arquivo), None)
+            nome_aba = next((f for f in formatos if f in abas_reais), None)
 
             if not nome_aba:
-                st.error(f"❌ Não achei a aba de hoje.")
-                st.warning(f"Abas lidas do Excel: {xls.sheet_names}")
+                st.error(f"❌ Não achei a aba de hoje ({hoje.strftime('%d%m%Y')}).")
+                st.warning(f"Abas lidas: {xls.sheet_names}")
                 st.stop()
 
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
@@ -154,17 +157,22 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
 
             limite = hoje + timedelta(hours=3)
+            
+            # Função de tratamento de hora para evitar erros de data
             def parsing_hora(v):
                 try:
                     t = pd.to_datetime(v)
-                    return datetime.combine(hoje.date(), t.time())
+                    return hoje.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
                 except: return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(parsing_hora)
+            
+            # Filtro comparando o horário de agora com o limite de 3h
             df_filtrado = df[(df['AUX_TIME'] >= hoje) & (df['AUX_TIME'] <= limite)].copy()
 
             if df_filtrado.empty:
-                st.warning(f"⚠️ Nenhuma viagem nas próximas 3 horas ({hoje.strftime('%H:%M')} às {limite.strftime('%H:%M')})."); st.stop()
+                st.warning(f"⚠️ Nenhuma viagem nas próximas 3h (entre {hoje.strftime('%H:%M')} e {limite.strftime('%H:%M')}).")
+                st.stop()
 
             clientes_dict = {}
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
