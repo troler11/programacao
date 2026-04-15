@@ -176,7 +176,9 @@ if st.button("Filtrar e Enviar para o WhatsApp", type="primary"):
 
             style = df_print.style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
                 .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
-            dfi.export(style, img_path, table_conversion="matplotlib")
+            
+            # COMANDO MAX_ROWS=-1 ADICIONADO ABAIXO:
+            dfi.export(style, img_path, table_conversion="matplotlib", max_rows=-1)
 
             # 5. Envio e Download
             if enviar_waha(img_path, cliente, hoje.strftime('%d/%m/%Y')):
