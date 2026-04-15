@@ -106,29 +106,30 @@ def gerar_planilha_formatada(df, cliente_id):
     return out
 
 def enviar_waha(imagem_path, nome_empresa, data_str):
-    id_grupo = None
-    for chave, id_waha in MAPA_GRUPOS.items():
-        if chave in nome_empresa:
-            id_grupo = id_waha
-            break
-            
+    id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
     if not id_grupo:
         return f"⚠️ Grupo não configurado para: {nome_empresa}"
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
+    
+    # Cabeçalhos e Parâmetros (Essencial para evitar Erro 400 e 401)
     headers = {"accept": "application/json"}
     if CHAVE_API_WAHA: headers["X-Api-Key"] = CHAVE_API_WAHA
+    
+    params = {'session': SESSAO_WAHA}
+    payload = {'chatId': id_grupo, 'caption': msg}
 
     try:
         with open(imagem_path, 'rb') as f:
-            # CORREÇÃO AQUI: Adicionamos o params={'session': SESSAO_WAHA} para forçar a sessão na URL
+            # Enviamos a sessão como parâmetro de URL (?session=default)
             resp = requests.post(
                 URL_WAHA, 
                 headers=headers,
-                params={'session': SESSAO_WAHA}, 
-                data={'chatId': id_grupo, 'caption': msg}, 
-                files={'file': (imagem_path, f, 'image/png')}
+                params=params, 
+                data=payload, 
+                files={'file': (os.path.basename(imagem_path), f, 'image/png')}
             )
+            
         if resp.status_code in [200, 201]:
             return "✅ Enviado com sucesso!"
         return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
