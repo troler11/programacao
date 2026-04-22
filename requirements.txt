@@ -5,3 +5,4 @@ dataframe_image
 openpyxl
 pytz
 Pillow
+matplotlib
