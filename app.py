@@ -46,7 +46,7 @@ MAPA_GRUPOS = {
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
 
 # A chave global configurada na variável AUTHENTICATION_API_KEY no Easypanel
-CHAVE_API_EVOLUTION = "sua_senha_aqui" 
+CHAVE_API_EVOLUTION = "429683C4C977415CAAFCCE10F7D57E11" 
 
 # ==========================================
 # FUNÇÕES DE APOIO
