@@ -43,8 +43,8 @@ MAPA_GRUPOS = {
 }
 
 # ===> MUDAR PARA A SUA CHAVE E URL DA EVOLUTION <===
-URL_EVOLUTION = "https://sua-api.easypanel.host/message/sendMedia/NOME_INSTANCIA"
-CHAVE_API_EVOLUTION = "SUA_SENHA_AQUI"
+URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
+CHAVE_API_EVOLUTION = "429683C4C977415CAAFCCE10F7D57E11"
 
 # ==========================================
 # FUNÇÕES DE APOIO
