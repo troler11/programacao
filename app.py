@@ -25,12 +25,12 @@ COL_MOTORISTA = 'MOTORISTA'
 
 MAPA_LOGOS = {
     "MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png", 
-    "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", "AAM": "logo_aam.png"
+    "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", "AAM": "logo_aam.png", "JDE": "logo_jde.png", "HELLERMANN": "logo_hellermann.png", "NISSEI": "logo_nissei.png", "BBOSCH":" logo_bbosch.png"
 }
 
 MAPA_GRUPOS = {
-    "MELI": "120363000000000000@g.us", "AMAZON": "120363000000000001@g.us", 
-    "ADORO": "5511917623237", "AAM": "5511934773679"
+    "MELI": "5511917623237s", "AMAZON": "5511917623237", 
+    "ADORO": "5511917623237", "AAM": "5511934773679", "JDE": "5511917623237, "HELLERMANN": "5511917623237", "NISSEI": "5511917623237", "BBOSCH":" 5511917623237"
 }
 
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
