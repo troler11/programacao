@@ -108,7 +108,7 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     if not id_grupo: 
         return f"⚠️ Destino não configurado para: {nome_empresa}"
 
-    # Limpeza do número caso não seja grupo
+    # Limpeza do número para a Evolution (sem o @c.us)
     if "@c.us" in id_grupo:
         id_grupo = id_grupo.replace("@c.us", "")
 
@@ -120,38 +120,33 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     }
 
     try:
-        # 1. GOLPE DE MESTRE 2.0: Upload com máscara de navegador
-        headers_catbox = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        
+        # 1. Upload para o TmpFiles (Amigável para servidores Easypanel)
         with open(imagem_path, 'rb') as f:
             resp_upload = requests.post(
-                'https://catbox.moe/user/api.php', 
-                data={'reqtype': 'fileupload'}, 
-                files={'fileToUpload': f},
-                headers=headers_catbox,
-                timeout=20 # Dá tempo de sobra para o servidor processar
+                'https://tmpfiles.org/api/v1/upload', 
+                files={'file': ('escala.png', f, 'image/png')}
             )
         
-        # Agora, se der erro, ele vai te mostrar a resposta real do servidor
         if resp_upload.status_code != 200:
-            return f"❌ Erro Catbox: Status {resp_upload.status_code} - {resp_upload.text}"
+            return f"❌ Erro TmpFiles: Status {resp_upload.status_code} - {resp_upload.text}"
         
-        link_imagem = resp_upload.text.strip() 
+        # Pega a URL gerada e ajusta para o link direto de download (adiciona o /dl/)
+        dados = resp_upload.json()
+        url_original = dados.get('data', {}).get('url', '')
+        link_direto = url_original.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
         
-        # 2. Enviar o LINK para a Evolution API em JSON puro
+        # 2. Enviar o LINK para a Evolution API
         payload = {
             "number": id_grupo,
             "mediatype": "image",
-            "media": link_imagem,
+            "media": link_direto,
             "caption": msg
         }
 
         resp = requests.post(URL_EVOLUTION, headers=headers_evolution, json=payload)
             
         if resp.status_code in [200, 201]:
-            return "✅ Escala enviada com sucesso!"
+            return "✅ Escala enviada com sucesso pela Evolution API!"
         else:
             return f"❌ Erro Evolution ({resp.status_code}): {resp.text}"
             
