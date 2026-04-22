@@ -114,32 +114,29 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
+    # O SEGREDO AQUI: NÃO coloque "Content-Type"! 
+    # O Python vai gerar o cabeçalho 'multipart/form-data' automaticamente.
     headers = {
-        "Content-Type": "application/json",
         "apikey": CHAVE_API_EVOLUTION
     }
 
     try:
-        # 1. Lê a imagem
-        with open(imagem_path, 'rb') as f:
-            img_bytes = f.read()
-            
-            # 2. Converte para Base64 e LIMPA qualquer sujeira/quebra de linha
-            base64_data = base64.b64encode(img_bytes).decode('ascii').replace('\n', '').replace('\r', '').strip()
-            # NOTA: Não colocamos mais o "data:image..." aqui. Mandamos puro!
-        
-        # 3. Payload na raiz, perfeitamente estruturado
+        # Payload com os dados em texto
         payload = {
             "number": id_grupo,
             "mediatype": "image",
-            "mimetype": "image/png",
-            "caption": msg,
-            "media": base64_data,
-            "fileName": "escala.png"
+            "caption": msg
         }
 
-        # 4. Disparo
-        resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
+        # Lemos a imagem direto do disco sem converter pra texto
+        with open(imagem_path, 'rb') as f:
+            # Enviamos o arquivo físico como anexo
+            files = {
+                "file": ("escala.png", f, "image/png")
+            }
+
+            # Usamos 'data=payload' e 'files=files' para forçar o Multipart Form-Data
+            resp = requests.post(URL_EVOLUTION, headers=headers, data=payload, files=files)
             
         if resp.status_code in [200, 201]:
             return "✅ Imagem enviada com sucesso pela Evolution API!"
