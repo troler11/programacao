@@ -114,27 +114,33 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    headers = {
+    headers_evolution = {
         "Content-Type": "application/json",
         "apikey": CHAVE_API_EVOLUTION
     }
 
     try:
-        # 1. O GOLPE DE MESTRE: Hospedar a imagem na nuvem temporariamente (grátis e sem chave de API)
+        # 1. GOLPE DE MESTRE 2.0: Upload com máscara de navegador
+        headers_catbox = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
         with open(imagem_path, 'rb') as f:
             resp_upload = requests.post(
                 'https://catbox.moe/user/api.php', 
                 data={'reqtype': 'fileupload'}, 
-                files={'fileToUpload': f}
+                files={'fileToUpload': f},
+                headers=headers_catbox,
+                timeout=20 # Dá tempo de sobra para o servidor processar
             )
         
+        # Agora, se der erro, ele vai te mostrar a resposta real do servidor
         if resp_upload.status_code != 200:
-            return f"❌ Erro interno ao converter imagem em Link."
+            return f"❌ Erro Catbox: Status {resp_upload.status_code} - {resp_upload.text}"
         
-        # Pega o link direto gerado (ex: https://files.catbox.moe/arquivo.png)
         link_imagem = resp_upload.text.strip() 
         
-        # 2. Enviar o LINK para a Evolution API em JSON puro. Acabou a briga!
+        # 2. Enviar o LINK para a Evolution API em JSON puro
         payload = {
             "number": id_grupo,
             "mediatype": "image",
@@ -142,10 +148,10 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
             "caption": msg
         }
 
-        resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
+        resp = requests.post(URL_EVOLUTION, headers=headers_evolution, json=payload)
             
         if resp.status_code in [200, 201]:
-            return "✅ Escala enviada com sucesso pela Evolution API!"
+            return "✅ Escala enviada com sucesso!"
         else:
             return f"❌ Erro Evolution ({resp.status_code}): {resp.text}"
             
