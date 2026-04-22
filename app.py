@@ -25,7 +25,10 @@ COL_MOTORISTA = 'MOTORISTA'
 
 MAPA_LOGOS = {
     "MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png", 
-    "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", "AAM": "logo_aam.png", "JDE": "logo_jde.png", "HELLERMANN": "logo_hellermann.png", "NISSEI": "logo_nissei.png", "BBOSCH":" logo_bbosch.png"
+    "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", 
+    "AAM": "logo_aam.png", "JDE": "logo_jde.png", 
+    "HELLERMANN": "logo_hellermann.png", "NISSEI": "logo_nissei.png", 
+    "BBOSCH":" logo_bbosch.png"
 }
 
 MAPA_GRUPOS = {
