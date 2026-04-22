@@ -117,53 +117,35 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    headers_evolution = {
+    headers = {
         "Content-Type": "application/json",
         "apikey": CHAVE_API_EVOLUTION
     }
 
     try:
-        # 1. Lê a imagem
+        # 1. Lê a imagem física gerada pelo robô
         with open(imagem_path, 'rb') as f:
             img_bytes = f.read()
+            
+            # 2. Base64 PURO: Sem prefixo, sem quebras de linha.
             base64_data = base64.b64encode(img_bytes).decode('ascii')
-            
-        # 2. Upload para o ImgBB (com a sua chave)
-        resp_upload = requests.post(
-            "https://api.imgbb.com/1/upload", 
-            data={
-                "key": CHAVE_IMGBB,
-                "image": base64_data
-            }
-        )
         
-        if resp_upload.status_code != 200:
-            return f"❌ Erro ImgBB ({resp_upload.status_code}): {resp_upload.text}"
-            
-        link_imagem = resp_upload.json().get('data', {}).get('url', '')
-        
-        # Se por acaso o ImgBB não devolver o link, o robô para aqui
-        if not link_imagem:
-            return "❌ Erro: ImgBB processou, mas não retornou o link da imagem."
-
-        # 3. PAYLOAD BLINDADO: Agora com mimetype e fileName pra API não engasgar!
+        # 3. PAYLOAD ESTRITO E LIMPO:
+        # Apenas os 4 campos vitais. Sem mimetype ou fileName para não travar a API.
         payload = {
             "number": id_grupo,
             "mediatype": "image",
-            "mimetype": "image/png",      # A falta dessa linha causava o [object Object]
-            "fileName": "escala.png",     # E a falta dessa também!
-            "media": link_imagem,
+            "media": base64_data,
             "caption": msg
         }
 
-        # 4. Disparo final
-        resp = requests.post(URL_EVOLUTION, headers=headers_evolution, json=payload)
+        # 4. Disparo final e direto
+        resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
             
         if resp.status_code in [200, 201]:
             return "✅ Escala enviada com sucesso pela Evolution API!"
         else:
-            # Mostra o erro e o link gerado para não termos mais mistérios
-            return f"❌ Erro Evolution ({resp.status_code}): {resp.text}\n🔗 Link testado: {link_imagem}"
+            return f"❌ Erro Evolution ({resp.status_code}): {resp.text}"
             
     except Exception as e:
         return f"❌ Falha de conexão: {e}"
