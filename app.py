@@ -10,8 +10,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.drawing.image import Image as OpenpyxlImage
 import os
+import json
 
-# Biblioteca PIL para manipular a imagem final e escrever o título
 from PIL import Image, ImageDraw, ImageFont
 
 # ==========================================
@@ -28,71 +28,49 @@ COL_PREFIXO = 'FROTA FINAL'
 COL_MOTORISTA = 'MOTORISTA'   
 
 MAPA_LOGOS = {
-    "MELI": "logo_meli.png", 
-    "MERCADO LIVRE": "logo_meli.png", 
-    "AMAZON": "logo_amazon.png", 
-    "ADORO": "logo_adoro.png", 
-    "AAM": "logo_aam.png"
+    "MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png", 
+    "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", "AAM": "logo_aam.png"
 }
 
 MAPA_GRUPOS = {
-    "MELI": "120363000000000000@g.us", 
-    "AMAZON": "120363000000000001@g.us", 
-    "ADORO": "5511917623237", 
-    "AAM": "5511934773679" 
+    "MELI": "120363000000000000@g.us", "AMAZON": "120363000000000001@g.us", 
+    "ADORO": "5511917623237", "AAM": "5511934773679"
 }
 
-# Configurações Evolution API
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
 CHAVE_API_EVOLUTION = "429683C4C977415CAAFCCE10F7D57E11"
 
 # ==========================================
-# FUNÇÕES DE APOIO
+# FUNÇÕES DE APOIO GERAIS
 # ==========================================
-
 def embutir_logos_na_imagem(img_path, cliente_nome):
-    """Lê a foto da tabela, adiciona um cabeçalho e escreve o título 'PROGRAMAÇÃO - EMPRESA'."""
     try:
         tabela_img = Image.open(img_path)
         largura_tabela, altura_tabela = tabela_img.size
-        
-        # Aumentamos o cabeçalho para 160px para caber os logos e o título com folga
         altura_cabecalho = 160
         nova_largura = max(largura_tabela, 800) 
-        
         nova_img = Image.new('RGB', (nova_largura, altura_tabela + altura_cabecalho), 'white')
         
-        # Cola a tabela na parte inferior
         x_tabela = (nova_largura - largura_tabela) // 2
         nova_img.paste(tabela_img, (x_tabela, altura_cabecalho))
         
         draw = ImageDraw.Draw(nova_img)
-        
-        # 1. Desenha o Título (PROGRAMAÇÃO - EMPRESA)
-       # 1. Desenha o Título (PROGRAMAÇÃO - EMPRESA)
         texto_titulo = f"PROGRAMAÇÃO - {cliente_nome}"
-        
-        # Tenta carregar a fonte local que você subiu no GitHub
         try:
-            # Coloque exatamente o nome do arquivo .ttf que você fez upload
-            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 32) # Ajuste o tamanho se 40 ficar muito grande
-        except Exception as e:
-            print(f"Fonte não encontrada, usando padrão: {e}")
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 32)
+        except:
             font = ImageFont.load_default()
 
-        # Calcula posição central para o texto
         w_texto = draw.textlength(texto_titulo, font=font)
         x_texto = (nova_largura - w_texto) // 2
-        draw.text((x_texto, 100), texto_titulo, fill=(255, 0, 0), font=font) # Vermelho Mimo
+        draw.text((x_texto, 100), texto_titulo, fill=(255, 0, 0), font=font)
         
-        # 2. Insere o Logo Mimo (Esquerda)
         try:
             mimo = Image.open('logo_mimo.png')
             mimo.thumbnail((200, 80))
             nova_img.paste(mimo, (20, 20), mimo if mimo.mode == 'RGBA' else None)
         except: pass
         
-        # 3. Insere o Logo Cliente (Direita)
         try:
             for chave, arquivo in MAPA_LOGOS.items():
                 if chave in cliente_nome:
@@ -101,18 +79,15 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
                     nova_img.paste(cliente_logo, (nova_largura - 180, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
                     break
         except: pass
-        
         nova_img.save(img_path)
-        
-    except Exception as e:
-        print(f"Erro ao montar imagem: {e}")
+    except Exception as e: print(f"Erro ao montar imagem: {e}")
 
 def gerar_planilha_formatada(df, cliente_id):
     wb = Workbook()
     ws = wb.active
     fill_vermelho = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
     fonte_branca = Font(color="FFFFFF", bold=True)
-    fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=25)
+    fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
     
     try:
         logo_esq = OpenpyxlImage('logo_mimo.png')
@@ -145,11 +120,13 @@ def gerar_planilha_formatada(df, cliente_id):
     out = io.BytesIO(); wb.save(out); out.seek(0)
     return out
 
-def enviar_evolution(imagem_path, nome_empresa, data_str):
+def enviar_evolution(imagem_path, nome_empresa, data_str, contexto="Próximas 3h"):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
     if not id_grupo: return f"⚠️ Destino não configurado para: {nome_empresa}"
 
-    msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
+    if "@c.us" in id_grupo: id_grupo = id_grupo.replace("@c.us", "")
+
+    msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* {contexto}"
     headers = {"Content-Type": "application/json", "apikey": CHAVE_API_EVOLUTION}
 
     try:
@@ -164,9 +141,48 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     except Exception as e: return f"❌ Falha de conexão: {e}"
 
 # ==========================================
-# INTERFACE PRINCIPAL
+# O NOVO MOTOR: STREAMLIT API EXPERIMENTAL
 # ==========================================
+# Verifica se a requisição está vindo como um comando de API (do n8n)
+query_params = st.query_params
 
+if "api_n8n" in query_params:
+    # Este bloco só roda quando o n8n chama o link!
+    st.title("Robô em processamento (Modo Invisível)...")
+    try:
+        # A API experimental do Streamlit consegue ler o "Body" da requisição
+        raw_body = st.context.headers.get("X-N8n-Payload") # Necessita configuração extra no n8n (veja abaixo)
+        
+        if raw_body:
+            dados = json.loads(raw_body)
+            cliente = dados.get('cliente', '').upper()
+            linhas = dados.get('viagens', [])
+            
+            df = pd.DataFrame(linhas)
+            cols_desejadas = ['ENT', 'INI', 'LINHA', 'CLIENTE', 'FROTA FINAL', 'MOTORISTA']
+            df = df[[c for c in cols_desejadas if c in df.columns]]
+
+            img_path = f"temp_n8n_{cliente}.png"
+            style = df.style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
+                            .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
+            
+            dfi.export(style, img_path, table_conversion="matplotlib")
+            embutir_logos_na_imagem(img_path, cliente)
+            
+            data_hoje = datetime.now().strftime('%d/%m/%Y')
+            res = enviar_evolution(img_path, cliente, data_hoje, "Automatizada")
+            
+            st.write(f"Resultado do Envio API: {res}")
+        else:
+            st.error("Nenhum dado recebido no cabeçalho.")
+            
+    except Exception as e:
+        st.error(f"Erro interno API: {e}")
+    st.stop() # Para a execução aqui, não desenha o resto da tela!
+
+# ==========================================
+# INTERFACE PRINCIPAL (VISUAL)
+# ==========================================
 st.set_page_config(page_title="Gestão Mimo", layout="centered")
 st.title("Gerador de Escalas por Cliente 🚌⏳")
 
@@ -224,8 +240,6 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                     .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
                 
                 dfi.export(style, img_path, table_conversion="matplotlib", max_rows=-1)
-                
-                # NOVO: Monta a imagem com Logos + Título PROGRAMAÇÃO
                 embutir_logos_na_imagem(img_path, cliente_nome)
                 
                 clientes_dict[cliente_nome] = {
