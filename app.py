@@ -120,30 +120,22 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     }
 
     try:
-        # Lê a imagem e converte para Base64
+        # Lê a imagem e converte para Base64 limpando qualquer lixo invisível
         with open(imagem_path, 'rb') as f:
             img_bytes = f.read()
-            
-            # O SEGREDO AQUI: decode('ascii') e remoção absoluta de quebras de linha
             base64_data = base64.b64encode(img_bytes).decode('ascii').replace('\n', '').replace('\r', '').strip()
             
-            # Prefixo obrigatório montado sem nenhum espaço invisível
+            # Prefixo obrigatório montado perfeitamente
             base64_img = f"data:image/png;base64,{base64_data}"
         
-        # Payload nativo e perfeito para a Evolution API v2+
+        # Payload estruturado na RAIZ, exatamente como sua API pediu
         payload = {
             "number": id_grupo,
-            "options": {
-                "delay": 1200,
-                "presence": "composing"
-            },
-            "mediaMessage": {
-                "mediatype": "image",
-                "mimetype": "image/png",
-                "caption": msg,
-                "media": base64_img,
-                "fileName": "escala.png"
-            }
+            "mediatype": "image",
+            "mimetype": "image/png",
+            "caption": msg,
+            "media": base64_img,
+            "fileName": "escala.png"
         }
 
         resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
