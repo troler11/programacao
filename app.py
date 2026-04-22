@@ -28,12 +28,12 @@ MAPA_LOGOS = {
     "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", 
     "AAM": "logo_aam.png", "JDE": "logo_jde.png", 
     "HELLERMANN": "logo_hellermann.png", "NISSEI": "logo_nissei.png", 
-    "BBOSCH":" logo_bbosch.png"
+    "BBOSCH": "logo_bbosch.png"
 }
 
 MAPA_GRUPOS = {
-    "MELI": "5511917623237s", "AMAZON": "5511917623237", 
-    "ADORO": "5511917623237", "AAM": "5511934773679", "JDE": "5511917623237, "HELLERMANN": "5511917623237", "NISSEI": "5511917623237", "BBOSCH":" 5511917623237"
+    "MELI": "5511917623237", "AMAZON": "5511917623237", 
+    "ADORO": "5511917623237", "AAM": "5511934773679", "JDE": "5511917623237, "HELLERMANN": "5511917623237", "NISSEI": "5511917623237", "BBOSCH": "5511917623237"
 }
 
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
