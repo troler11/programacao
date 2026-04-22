@@ -108,7 +108,7 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     if not id_grupo: 
         return f"⚠️ Destino não configurado para: {nome_empresa}"
 
-    # Limpeza do número caso não seja grupo
+    # Limpeza do número caso não seja grupo (A Evolution aceita apenas os números limpos para DMs)
     if "@c.us" in id_grupo:
         id_grupo = id_grupo.replace("@c.us", "")
 
@@ -120,24 +120,25 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     }
 
     try:
-        # Lê a imagem e converte para Base64 limpando qualquer lixo invisível
+        # 1. Lê a imagem
         with open(imagem_path, 'rb') as f:
             img_bytes = f.read()
-            base64_data = base64.b64encode(img_bytes).decode('ascii').replace('\n', '').replace('\r', '').strip()
             
-            # Prefixo obrigatório montado perfeitamente
-            base64_img = f"data:image/png;base64,{base64_data}"
+            # 2. Converte para Base64 e LIMPA qualquer sujeira/quebra de linha
+            base64_data = base64.b64encode(img_bytes).decode('ascii').replace('\n', '').replace('\r', '').strip()
+            # NOTA: Não colocamos mais o "data:image..." aqui. Mandamos puro!
         
-        # Payload estruturado na RAIZ, exatamente como sua API pediu
+        # 3. Payload na raiz, perfeitamente estruturado
         payload = {
             "number": id_grupo,
             "mediatype": "image",
             "mimetype": "image/png",
             "caption": msg,
-            "media": base64_img,
+            "media": base64_data,
             "fileName": "escala.png"
         }
 
+        # 4. Disparo
         resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
             
         if resp.status_code in [200, 201]:
