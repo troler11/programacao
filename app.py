@@ -12,7 +12,7 @@ from openpyxl.drawing.image import Image as OpenpyxlImage
 import os
 from PIL import Image, ImageDraw, ImageFont
 
-# Configuração de página (Obrigatório ser o primeiro)
+# 1. Configuração de página (Deve ser o primeiro comando Streamlit)
 st.set_page_config(page_title="Gestão Mimo", layout="centered")
 
 # ==========================================
@@ -87,28 +87,16 @@ def enviar_evolution(imagem_path, nome_empresa, data_str, contexto):
         return "✅ Escala enviada!" if resp.status_code in [200, 201] else f"❌ Erro: {resp.text}"
     except Exception as e: return f"❌ Falha: {e}"
 
-def gerar_planilha_formatada(df, cliente_id):
-    wb = Workbook(); ws = wb.active
-    fill_vermelho = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-    ws.merge_cells('A12:F12'); ws['A12'] = f"PROGRAMAÇÃO - {cliente_id}"
-    ws.append([]); ws.append(["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"])
-    for col in range(1, 7): ws.cell(row=14, column=col).fill = fill_vermelho
-    for _, row in df.iterrows():
-        ws.append([row.get(COL_PERIODO,''), row.get(COL_HORA,''), row.get(COL_LINHA,''), row.get(COL_EMPRESA,''), row.get(COL_PREFIXO,''), row.get(COL_MOTORISTA,'')])
-    out = io.BytesIO(); wb.save(out); out.seek(0)
-    return out
-
 # ==========================================
-# GATILHO DE CABEÇALHO (PARA O N8N)
+# GATILHO AUTOMÁTICO (ROBÔ N8N)
 # ==========================================
-# Captura os cabeçalhos enviados pelo n8n
-headers_api = st.context.headers
-is_robot = headers_api.get("x-robot-secret") == "mimo2026"
+params = st.query_params.to_dict()
 
-if is_robot:
-    cliente_alvo = headers_api.get("x-cliente", "").upper()
-    horario_alvo = headers_api.get("x-horario", "")
-    
+if params.get("robo") == "sim":
+    st.write("### ⚙️ Processando Escala Automática...")
+    cliente_alvo = params.get("c", "").upper()
+    horario_alvo = params.get("h", "")
+
     if cliente_alvo and horario_alvo:
         try:
             fuso = pytz.timezone('America/Sao_Paulo')
@@ -143,20 +131,16 @@ if is_robot:
                     dfi.export(style, img_path, table_conversion="matplotlib")
                     embutir_logos_na_imagem(img_path, cliente_alvo)
                     res = enviar_evolution(img_path, cliente_alvo, agora.strftime('%d/%m/%Y'), f"Janela {horario_alvo}")
-                    st.write(res)
-                else: st.write("Sem viagens")
-            else: st.write("Aba não encontrada")
-        except Exception as e: st.write(f"Erro: {e}")
+                    st.success(res)
+                else: st.warning("Nenhuma viagem encontrada para este filtro.")
+            else: st.error(f"Aba {nome_aba} não encontrada na planilha.")
+        except Exception as e: st.error(f"Erro no processamento: {e}")
     st.stop()
 
 # ==========================================
-# INTERFACE VISUAL (HUMANO)
+# INTERFACE MANUAL (VISUAL)
 # ==========================================
 st.title("Gerador de Escalas Mimo 🚌")
+st.info("Painel ativo. Utilize o n8n para envios automáticos agendados.")
 
-if 'clientes_processados' not in st.session_state:
-    st.session_state.clientes_processados = {}
-
-if st.button("Analisar Próximas 3h", type="primary"):
-    # ... (O mesmo código visual de antes para gerar prévias manuais) ...
-    st.info("Função manual ativada. Use o n8n para envios automáticos.")
+# (Aqui você pode manter seu código do botão manual se desejar)
