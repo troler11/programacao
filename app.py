@@ -39,7 +39,7 @@ MAPA_GRUPOS = {
     "AAM": "5511934773679@c.us"
 }
 
-URL_WAHA = "https://mimo-waha.3sbqz4.easypanel.host/api/sendImage"
+URL_WAHA = "https://mimo-wahaa.3sbqz4.easypanel.host/api/sendImage"
 SESSAO_WAHA = "default"
 
 # ATENÇÃO: Se não houver senha configurada no Easypanel, deixe vazio: ""
