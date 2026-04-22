@@ -123,12 +123,12 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     }
 
     try:
-        # 1. Lê a imagem gerada
+        # 1. Lê a imagem
         with open(imagem_path, 'rb') as f:
             img_bytes = f.read()
             base64_data = base64.b64encode(img_bytes).decode('ascii')
             
-        # 2. Upload para o ImgBB (Com a SUA chave exclusiva, sem limites bloqueando)
+        # 2. Upload para o ImgBB (com a sua chave)
         resp_upload = requests.post(
             "https://api.imgbb.com/1/upload", 
             data={
@@ -140,23 +140,30 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
         if resp_upload.status_code != 200:
             return f"❌ Erro ImgBB ({resp_upload.status_code}): {resp_upload.text}"
             
-        # Pega a URL direta e oficial da imagem gerada pelo ImgBB
         link_imagem = resp_upload.json().get('data', {}).get('url', '')
+        
+        # Se por acaso o ImgBB não devolver o link, o robô para aqui
+        if not link_imagem:
+            return "❌ Erro: ImgBB processou, mas não retornou o link da imagem."
 
-        # 3. Manda a URL limpa para a Evolution API!
+        # 3. PAYLOAD BLINDADO: Agora com mimetype e fileName pra API não engasgar!
         payload = {
             "number": id_grupo,
             "mediatype": "image",
+            "mimetype": "image/png",      # A falta dessa linha causava o [object Object]
+            "fileName": "escala.png",     # E a falta dessa também!
             "media": link_imagem,
             "caption": msg
         }
 
+        # 4. Disparo final
         resp = requests.post(URL_EVOLUTION, headers=headers_evolution, json=payload)
             
         if resp.status_code in [200, 201]:
             return "✅ Escala enviada com sucesso pela Evolution API!"
         else:
-            return f"❌ Erro Evolution ({resp.status_code}): {resp.text}"
+            # Mostra o erro e o link gerado para não termos mais mistérios
+            return f"❌ Erro Evolution ({resp.status_code}): {resp.text}\n🔗 Link testado: {link_imagem}"
             
     except Exception as e:
         return f"❌ Falha de conexão: {e}"
