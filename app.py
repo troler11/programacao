@@ -10,7 +10,6 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.drawing.image import Image as OpenpyxlImage
 import os
-import json
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -41,7 +40,7 @@ URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMe
 CHAVE_API_EVOLUTION = "429683C4C977415CAAFCCE10F7D57E11"
 
 # ==========================================
-# FUNÇÕES DE APOIO GERAIS
+# FUNÇÕES DE IMAGEM E ENVIO
 # ==========================================
 def embutir_logos_na_imagem(img_path, cliente_nome):
     try:
@@ -82,48 +81,9 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         nova_img.save(img_path)
     except Exception as e: print(f"Erro ao montar imagem: {e}")
 
-def gerar_planilha_formatada(df, cliente_id):
-    wb = Workbook()
-    ws = wb.active
-    fill_vermelho = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-    fonte_branca = Font(color="FFFFFF", bold=True)
-    fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
-    
-    try:
-        logo_esq = OpenpyxlImage('logo_mimo.png')
-        logo_esq.width, logo_esq.height = 180, 50
-        ws.add_image(logo_esq, 'A2')
-        for chave, arquivo in MAPA_LOGOS.items():
-            if chave in cliente_id:
-                logo_c = OpenpyxlImage(arquivo)
-                logo_c.width, logo_c.height = 120, 70
-                ws.add_image(logo_c, 'F2')
-                break
-    except: pass
-        
-    ws.merge_cells('A12:F12')
-    ws['A12'] = f"PROGRAMAÇÃO - {cliente_id}"
-    ws['A12'].font = fonte_vermelha_titulo
-    ws['A12'].alignment = Alignment(horizontal="center")
-    
-    ws.append([])
-    ws.append(["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"])
-    
-    for col in range(1, 7):
-        c = ws.cell(row=14, column=col)
-        c.fill = fill_vermelho; c.font = fonte_branca; c.alignment = Alignment(horizontal="center")
-        
-    for _, row in df.iterrows():
-        ws.append([row.get(COL_PERIODO,''), row.get(COL_HORA,''), row.get(COL_LINHA,''), row.get(COL_EMPRESA,''), row.get(COL_PREFIXO,''), row.get(COL_MOTORISTA,'')])
-        
-    ws.column_dimensions['C'].width = 45; ws.column_dimensions['F'].width = 25
-    out = io.BytesIO(); wb.save(out); out.seek(0)
-    return out
-
-def enviar_evolution(imagem_path, nome_empresa, data_str, contexto="Próximas 3h"):
+def enviar_evolution(imagem_path, nome_empresa, data_str, contexto):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
-    if not id_grupo: return f"⚠️ Destino não configurado para: {nome_empresa}"
-
+    if not id_grupo: return f"⚠️ Destino não configurado: {nome_empresa}"
     if "@c.us" in id_grupo: id_grupo = id_grupo.replace("@c.us", "")
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* {contexto}"
@@ -135,53 +95,95 @@ def enviar_evolution(imagem_path, nome_empresa, data_str, contexto="Próximas 3h
         
         payload = {"number": id_grupo, "mediatype": "image", "media": base64_data, "caption": msg}
         resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
-            
-        if resp.status_code in [200, 201]: return "✅ Escala enviada com sucesso!"
-        else: return f"❌ Erro Evolution ({resp.status_code}): {resp.text}"
+        if resp.status_code in [200, 201]: return "✅ Escala enviada!"
+        else: return f"❌ Erro Evolution: {resp.text}"
     except Exception as e: return f"❌ Falha de conexão: {e}"
 
+def gerar_planilha_formatada(df, cliente_id):
+    wb = Workbook(); ws = wb.active
+    fill_vermelho = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+    fonte_branca = Font(color="FFFFFF", bold=True)
+    ws.merge_cells('A12:F12')
+    ws['A12'] = f"PROGRAMAÇÃO - {cliente_id}"
+    ws.append([]); ws.append(["Periodo", "Horas", "Linha", "Empresa", "Prefixo", "Motorista"])
+    for col in range(1, 7):
+        c = ws.cell(row=14, column=col); c.fill = fill_vermelho; c.font = fonte_branca
+    for _, row in df.iterrows():
+        ws.append([row.get(COL_PERIODO,''), row.get(COL_HORA,''), row.get(COL_LINHA,''), row.get(COL_EMPRESA,''), row.get(COL_PREFIXO,''), row.get(COL_MOTORISTA,'')])
+    ws.column_dimensions['C'].width = 45; ws.column_dimensions['F'].width = 25
+    out = io.BytesIO(); wb.save(out); out.seek(0)
+    return out
+
 # ==========================================
-# O NOVO MOTOR: STREAMLIT API EXPERIMENTAL
+# GATILHO INVISÍVEL DO N8N (A MÁGICA SEGURA)
 # ==========================================
-# Verifica se a requisição está vindo como um comando de API (do n8n)
 query_params = st.query_params
 
 if "api_n8n" in query_params:
-    # Este bloco só roda quando o n8n chama o link!
-    st.title("Robô em processamento (Modo Invisível)...")
-    try:
-        # A API experimental do Streamlit consegue ler o "Body" da requisição
-        raw_body = st.context.headers.get("X-N8n-Payload") # Necessita configuração extra no n8n (veja abaixo)
-        
-        if raw_body:
-            dados = json.loads(raw_body)
-            cliente = dados.get('cliente', '').upper()
-            linhas = dados.get('viagens', [])
+    st.title("⚙️ Robô Automático Executando...")
+    cliente_alvo = query_params.get("cliente", "").upper()
+    horario_alvo = query_params.get("horario", "")
+    
+    if cliente_alvo and horario_alvo:
+        try:
+            fuso = pytz.timezone('America/Sao_Paulo')
+            agora = datetime.now(fuso).replace(tzinfo=None)
             
-            df = pd.DataFrame(linhas)
-            cols_desejadas = ['ENT', 'INI', 'LINHA', 'CLIENTE', 'FROTA FINAL', 'MOTORISTA']
-            df = df[[c for c in cols_desejadas if c in df.columns]]
+            # 1. Matemática da Janela de 2 Horas
+            hora_obj = datetime.strptime(horario_alvo, '%H:%M').time()
+            inicio_filtro = agora.replace(hour=hora_obj.hour, minute=hora_obj.minute, second=0, microsecond=0)
+            fim_filtro = inicio_filtro + timedelta(hours=2)
+            
+            # 2. Baixa e lê o Google Sheets do dia
+            r = requests.get(URL_PLANILHA)
+            xls = pd.ExcelFile(r.content)
+            nome_aba = agora.strftime("%d%m%Y")
+            
+            if nome_aba in [a.strip() for a in xls.sheet_names]:
+                df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
+                linha_cab = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
+                df = df_bruto.iloc[linha_cab + 1:].reset_index(drop=True)
+                df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cab]]
+                df = df.dropna(subset=[COLUNA_FILTRO_HORA])
+                
+                def converter_tempo(v):
+                    if pd.isna(v): return pd.NaT
+                    try:
+                        dt = v if hasattr(v, 'hour') else pd.to_datetime(str(v).replace('h', ':').strip())
+                        return agora.replace(hour=dt.hour, minute=dt.minute, second=0, microsecond=0)
+                    except: return pd.NaT
 
-            img_path = f"temp_n8n_{cliente}.png"
-            style = df.style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
-                            .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
-            
-            dfi.export(style, img_path, table_conversion="matplotlib")
-            embutir_logos_na_imagem(img_path, cliente)
-            
-            data_hoje = datetime.now().strftime('%d/%m/%Y')
-            res = enviar_evolution(img_path, cliente, data_hoje, "Automatizada")
-            
-            st.write(f"Resultado do Envio API: {res}")
-        else:
-            st.error("Nenhum dado recebido no cabeçalho.")
-            
-    except Exception as e:
-        st.error(f"Erro interno API: {e}")
-    st.stop() # Para a execução aqui, não desenha o resto da tela!
+                df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(converter_tempo)
+                
+                # 3. Filtra pelo Cliente e pela Janela exata
+                df_filtrado = df[
+                    (df[COL_EMPRESA].str.contains(cliente_alvo, na=False)) & 
+                    (df['AUX_TIME'] >= inicio_filtro) & 
+                    (df['AUX_TIME'] <= fim_filtro)
+                ].copy()
+                
+                if not df_filtrado.empty:
+                    cols_print = [c for c in [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA] if c in df_filtrado.columns]
+                    style = df_filtrado[cols_print].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
+                        .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
+                    
+                    img_path = f"auto_{cliente_alvo}.png"
+                    dfi.export(style, img_path, table_conversion="matplotlib", max_rows=-1)
+                    embutir_logos_na_imagem(img_path, cliente_alvo)
+                    
+                    msg_janela = f"De {horario_alvo} às {fim_filtro.strftime('%H:%M')}"
+                    res = enviar_evolution(img_path, cliente_alvo, agora.strftime('%d/%m/%Y'), msg_janela)
+                    st.success(res)
+                else:
+                    st.warning("Sem viagens para essa janela.")
+            else:
+                st.error("Aba não encontrada.")
+        except Exception as e:
+            st.error(f"Erro Crítico: {e}")
+    st.stop() # Finaliza aqui. O robô invisível não mostra botões!
 
 # ==========================================
-# INTERFACE PRINCIPAL (VISUAL)
+# INTERFACE PRINCIPAL (VISUAL HUMANO)
 # ==========================================
 st.set_page_config(page_title="Gestão Mimo", layout="centered")
 st.title("Gerador de Escalas por Cliente 🚌⏳")
@@ -189,45 +191,33 @@ st.title("Gerador de Escalas por Cliente 🚌⏳")
 if 'clientes_processados' not in st.session_state:
     st.session_state.clientes_processados = {}
 
-if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
+if st.button("1. Analisar Planilha e Gerar Prévias (Próximas 3h)", type="primary"):
     with st.spinner("Analisando planilha..."):
         try:
             fuso = pytz.timezone('America/Sao_Paulo')
             agora = datetime.now(fuso).replace(tzinfo=None)
-            
             inicio_filtro = agora - timedelta(minutes=20)
             fim_filtro = agora + timedelta(hours=3)
             
             r = requests.get(URL_PLANILHA)
-            r.raise_for_status()
             xls = pd.ExcelFile(r.content)
             nome_aba = agora.strftime("%d%m%Y")
 
-            if nome_aba not in [a.strip() for a in xls.sheet_names]:
-                st.error(f"❌ Aba {nome_aba} não encontrada."); st.stop()
-
             df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
-            linha_cabecalho = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
-            
-            if linha_cabecalho is None: st.error("❌ Cabeçalho não encontrado."); st.stop()
-            
-            df = df_bruto.iloc[linha_cabecalho + 1:].reset_index(drop=True)
-            df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
+            linha_cab = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
+            df = df_bruto.iloc[linha_cab + 1:].reset_index(drop=True)
+            df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cab]]
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
 
             def converter_tempo(v):
                 if pd.isna(v): return pd.NaT
                 try:
-                    if hasattr(v, 'hour'): dt = v
-                    else: dt = pd.to_datetime(str(v).replace('h', ':').strip())
+                    dt = v if hasattr(v, 'hour') else pd.to_datetime(str(v).replace('h', ':').strip())
                     return agora.replace(hour=dt.hour, minute=dt.minute, second=0, microsecond=0)
                 except: return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(converter_tempo)
             df_filtrado = df[(df['AUX_TIME'] >= inicio_filtro) & (df['AUX_TIME'] <= fim_filtro)].copy()
-
-            if df_filtrado.empty:
-                st.warning("⚠️ Nenhuma viagem nas próximas 3h."); st.stop()
 
             clientes_dict = {}
             for cliente, group_df in df_filtrado.groupby(COL_EMPRESA):
@@ -250,7 +240,6 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 
             st.session_state.clientes_processados = clientes_dict
             st.success(f"✅ {len(clientes_dict)} clientes encontrados!")
-            
         except Exception as e: st.error(f"❌ Erro: {e}")
 
 if st.session_state.clientes_processados:
@@ -260,8 +249,7 @@ if st.session_state.clientes_processados:
             c1, c2 = st.columns(2)
             with c1:
                 if st.button(f"📲 Enviar via WhatsApp: {nome}", key=f"btn_{nome}"):
-                    res = enviar_evolution(dados["img"], nome, dados["data_str"])
-                    if "✅" in res: st.success(res)
-                    else: st.error(res)
+                    res = enviar_evolution(dados["img"], nome, dados["data_str"], "Próximas 3h")
+                    st.success(res) if "✅" in res else st.error(res)
             with c2:
                 st.download_button(f"📥 Baixar Excel: {nome}", dados["excel"], f"Escala_{nome.replace('/', '_')}.xlsx", key=f"dl_{nome}")
