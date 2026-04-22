@@ -108,42 +108,38 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     if not id_grupo: 
         return f"⚠️ Destino não configurado para: {nome_empresa}"
 
-    # Limpeza do número para a Evolution (sem o @c.us)
+    # Limpeza do número caso não seja grupo
     if "@c.us" in id_grupo:
         id_grupo = id_grupo.replace("@c.us", "")
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    headers_evolution = {
+    headers = {
         "Content-Type": "application/json",
         "apikey": CHAVE_API_EVOLUTION
     }
 
     try:
-        # 1. Upload para o TmpFiles (Amigável para servidores Easypanel)
         with open(imagem_path, 'rb') as f:
-            resp_upload = requests.post(
-                'https://tmpfiles.org/api/v1/upload', 
-                files={'file': ('escala.png', f, 'image/png')}
-            )
+            img_bytes = f.read()
+            
+            # 1. BASE64 100% LIMPO: Remove qualquer quebra de linha que cause o bug [object Object]
+            base64_data = base64.b64encode(img_bytes).decode('ascii').replace('\n', '').replace('\r', '').strip()
+            
+            # 2. PREFIXO OBRIGATÓRIO: Sem isso, dá o erro "Owned media must be a url or base64"
+            base64_img = f"data:image/png;base64,{base64_data}"
         
-        if resp_upload.status_code != 200:
-            return f"❌ Erro TmpFiles: Status {resp_upload.status_code} - {resp_upload.text}"
-        
-        # Pega a URL gerada e ajusta para o link direto de download (adiciona o /dl/)
-        dados = resp_upload.json()
-        url_original = dados.get('data', {}).get('url', '')
-        link_direto = url_original.replace('tmpfiles.org/', 'tmpfiles.org/dl/')
-        
-        # 2. Enviar o LINK para a Evolution API
+        # 3. PAYLOAD NA RAIZ: Sem isso, dá o erro "requires mediatype"
         payload = {
             "number": id_grupo,
             "mediatype": "image",
-            "media": link_direto,
-            "caption": msg
+            "mimetype": "image/png",
+            "caption": msg,
+            "media": base64_img,
+            "fileName": "escala.png"
         }
 
-        resp = requests.post(URL_EVOLUTION, headers=headers_evolution, json=payload)
+        resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
             
         if resp.status_code in [200, 201]:
             return "✅ Escala enviada com sucesso pela Evolution API!"
