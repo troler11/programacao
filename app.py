@@ -11,7 +11,7 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.drawing.image import Image as OpenpyxlImage
 import os
 
-# Adicionamos a biblioteca PIL para manipular a imagem final
+# Biblioteca PIL para manipular a imagem final e escrever o título
 from PIL import Image, ImageDraw, ImageFont
 
 # ==========================================
@@ -39,10 +39,10 @@ MAPA_GRUPOS = {
     "MELI": "120363000000000000@g.us", 
     "AMAZON": "120363000000000001@g.us", 
     "ADORO": "5511917623237", 
-    "AAM": "5511934773679" # Evolution API não usa @c.us, apenas números
+    "AAM": "5511934773679" 
 }
 
-# ===> MUDAR PARA A SUA CHAVE E URL DA EVOLUTION <===
+# Configurações Evolution API
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
 CHAVE_API_EVOLUTION = "429683C4C977415CAAFCCE10F7D57E11"
 
@@ -51,50 +51,59 @@ CHAVE_API_EVOLUTION = "429683C4C977415CAAFCCE10F7D57E11"
 # ==========================================
 
 def embutir_logos_na_imagem(img_path, cliente_nome):
-    """Lê a foto da tabela, adiciona um cabeçalho branco e cola os logos da Mimo e do Cliente."""
+    """Lê a foto da tabela, adiciona um cabeçalho e escreve o título 'PROGRAMAÇÃO - EMPRESA'."""
     try:
         tabela_img = Image.open(img_path)
         largura_tabela, altura_tabela = tabela_img.size
         
-        # Define a altura do cabeçalho branco
-        altura_cabecalho = 100
+        # Aumentamos o cabeçalho para 160px para caber os logos e o título com folga
+        altura_cabecalho = 160
+        nova_largura = max(largura_tabela, 800) 
         
-        # Cria um "quadro" branco novo. Garante pelo menos 700px de largura para caber os dois logos
-        nova_largura = max(largura_tabela, 700) 
         nova_img = Image.new('RGB', (nova_largura, altura_tabela + altura_cabecalho), 'white')
         
-        # Centraliza a tabela na parte de baixo do quadro
+        # Cola a tabela na parte inferior
         x_tabela = (nova_largura - largura_tabela) // 2
         nova_img.paste(tabela_img, (x_tabela, altura_cabecalho))
         
-        # Insere o Logo Mimo (Canto Superior Esquerdo)
+        draw = ImageDraw.Draw(nova_img)
+        
+        # 1. Desenha o Título (PROGRAMAÇÃO - EMPRESA)
+        texto_titulo = f"PROGRAMAÇÃO - {cliente_nome}"
+        
+        # Tenta carregar uma fonte, se falhar usa a padrão
+        try:
+            # Em servidores Linux/Docker geralmente tem essa fonte
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+        except:
+            font = ImageFont.load_default()
+
+        # Calcula posição central para o texto
+        w_texto = draw.textlength(texto_titulo, font=font)
+        x_texto = (nova_largura - w_texto) // 2
+        draw.text((x_texto, 100), texto_titulo, fill=(255, 0, 0), font=font) # Vermelho Mimo
+        
+        # 2. Insere o Logo Mimo (Esquerda)
         try:
             mimo = Image.open('logo_mimo.png')
-            mimo.thumbnail((180, 70))
-            if mimo.mode == 'RGBA':
-                nova_img.paste(mimo, (20, 15), mimo)
-            else:
-                nova_img.paste(mimo, (20, 15))
+            mimo.thumbnail((200, 80))
+            nova_img.paste(mimo, (20, 20), mimo if mimo.mode == 'RGBA' else None)
         except: pass
         
-        # Insere o Logo Cliente (Canto Superior Direito)
+        # 3. Insere o Logo Cliente (Direita)
         try:
             for chave, arquivo in MAPA_LOGOS.items():
                 if chave in cliente_nome:
                     cliente_logo = Image.open(arquivo)
-                    cliente_logo.thumbnail((150, 70))
-                    if cliente_logo.mode == 'RGBA':
-                        nova_img.paste(cliente_logo, (nova_largura - 170, 15), cliente_logo)
-                    else:
-                        nova_img.paste(cliente_logo, (nova_largura - 170, 15))
+                    cliente_logo.thumbnail((160, 80))
+                    nova_img.paste(cliente_logo, (nova_largura - 180, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
                     break
         except: pass
         
-        # Salva a imagem final montada por cima da antiga
         nova_img.save(img_path)
         
     except Exception as e:
-        print(f"Erro ao montar imagem com logos: {e}")
+        print(f"Erro ao montar imagem: {e}")
 
 def gerar_planilha_formatada(df, cliente_id):
     wb = Workbook()
@@ -138,13 +147,10 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
     if not id_grupo: return f"⚠️ Destino não configurado para: {nome_empresa}"
 
-    if "@c.us" in id_grupo: id_grupo = id_grupo.replace("@c.us", "")
-
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     headers = {"Content-Type": "application/json", "apikey": CHAVE_API_EVOLUTION}
 
     try:
-        # Lê a imagem FÍSICA com os logos já colados pelo PIL
         with open(imagem_path, 'rb') as f:
             base64_data = base64.b64encode(f.read()).decode('ascii')
         
@@ -215,10 +221,9 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                 style = group_df[cols_print].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'})\
                     .set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
                 
-                # 1. Tira o print cru da tabela
                 dfi.export(style, img_path, table_conversion="matplotlib", max_rows=-1)
                 
-                # 2. CHAMA O NOVO EDITOR: Cola os logos em cima da imagem gerada
+                # NOVO: Monta a imagem com Logos + Título PROGRAMAÇÃO
                 embutir_logos_na_imagem(img_path, cliente_nome)
                 
                 clientes_dict[cliente_nome] = {
