@@ -69,13 +69,15 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         draw = ImageDraw.Draw(nova_img)
         
         # 1. Desenha o Título (PROGRAMAÇÃO - EMPRESA)
+       # 1. Desenha o Título (PROGRAMAÇÃO - EMPRESA)
         texto_titulo = f"PROGRAMAÇÃO - {cliente_nome}"
         
-        # Tenta carregar uma fonte, se falhar usa a padrão
+        # Tenta carregar a fonte local que você subiu no GitHub
         try:
-            # Em servidores Linux/Docker geralmente tem essa fonte
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
-        except:
+            # Coloque exatamente o nome do arquivo .ttf que você fez upload
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 32) # Ajuste o tamanho se 40 ficar muito grande
+        except Exception as e:
+            print(f"Fonte não encontrada, usando padrão: {e}")
             font = ImageFont.load_default()
 
         # Calcula posição central para o texto
