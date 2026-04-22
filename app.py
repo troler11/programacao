@@ -1,4 +1,4 @@
-import streamlit as st
+from flask import Flask, request, jsonify
 import pandas as pd
 import requests
 import io
@@ -6,20 +6,15 @@ import dataframe_image as dfi
 import base64
 from datetime import datetime, timedelta
 import pytz 
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill
-from openpyxl.drawing.image import Image as OpenpyxlImage
 import os
 from PIL import Image, ImageDraw, ImageFont
 
-# 1. Configuração de página (Deve ser o primeiro comando Streamlit)
-st.set_page_config(page_title="Gestão Mimo", layout="centered")
+app = Flask(__name__)
 
 # ==========================================
 # CONFIGURAÇÕES
 # ==========================================
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH9lJhzNgDz3x05wnE3lc24YKiUQcn_WTNgxEpsSO2jA36rAwSDfLZUkm1SgE_uoKBXvgx1_8sDTXZ/pub?output=xlsx"
-
 COLUNA_FILTRO_HORA = 'INI' 
 COL_PERIODO = 'ENT'           
 COL_HORA = 'INI'              
@@ -88,59 +83,60 @@ def enviar_evolution(imagem_path, nome_empresa, data_str, contexto):
     except Exception as e: return f"❌ Falha: {e}"
 
 # ==========================================
-# GATILHO AUTOMÁTICO (ROBÔ N8N)
+# ROTA DA API (O QUE O N8N CHAMA)
 # ==========================================
-params = st.query_params.to_dict()
+@app.route('/gerar_escala', methods=['GET'])
+def gerar_escala():
+    cliente_alvo = request.args.get('cliente', '').upper()
+    horario_alvo = request.args.get('horario', '')
 
-if params.get("robo") == "sim":
-    st.write("### ⚙️ Processando Escala Automática...")
-    cliente_alvo = params.get("c", "").upper()
-    horario_alvo = params.get("h", "")
+    if not cliente_alvo or not horario_alvo:
+        return jsonify({"erro": "Faltam parametros cliente e horario"}), 400
 
-    if cliente_alvo and horario_alvo:
-        try:
-            fuso = pytz.timezone('America/Sao_Paulo')
-            agora = datetime.now(fuso).replace(tzinfo=None)
-            hora_obj = datetime.strptime(horario_alvo, '%H:%M').time()
-            inicio_filtro = agora.replace(hour=hora_obj.hour, minute=hora_obj.minute, second=0)
-            fim_filtro = inicio_filtro + timedelta(hours=2)
-            
-            r = requests.get(URL_PLANILHA)
-            xls = pd.ExcelFile(r.content)
-            nome_aba = agora.strftime("%d%m%Y")
-            
-            if nome_aba in [a.strip() for a in xls.sheet_names]:
-                df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
-                linha_cab = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
-                df = df_bruto.iloc[linha_cab + 1:].reset_index(drop=True)
-                df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cab]]
-                
-                def converter_tempo(v):
-                    try:
-                        dt = v if hasattr(v, 'hour') else pd.to_datetime(str(v).replace('h', ':').strip())
-                        return agora.replace(hour=dt.hour, minute=dt.minute, second=0)
-                    except: return pd.NaT
+    try:
+        fuso = pytz.timezone('America/Sao_Paulo')
+        agora = datetime.now(fuso).replace(tzinfo=None)
+        hora_obj = datetime.strptime(horario_alvo, '%H:%M').time()
+        inicio_filtro = agora.replace(hour=hora_obj.hour, minute=hora_obj.minute, second=0)
+        fim_filtro = inicio_filtro + timedelta(hours=2)
+        
+        r = requests.get(URL_PLANILHA)
+        xls = pd.ExcelFile(r.content)
+        nome_aba = agora.strftime("%d%m%Y")
+        
+        if nome_aba not in [a.strip() for a in xls.sheet_names]:
+            return jsonify({"erro": f"Aba {nome_aba} não encontrada"}), 404
 
-                df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(converter_tempo)
-                df_filtrado = df[(df[COL_EMPRESA].str.contains(cliente_alvo, na=False)) & (df['AUX_TIME'] >= inicio_filtro) & (df['AUX_TIME'] <= fim_filtro)].copy()
-                
-                if not df_filtrado.empty:
-                    img_path = f"auto_{cliente_alvo}.png"
-                    cols_p = [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA]
-                    style = df_filtrado[cols_p].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'}).set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
-                    dfi.export(style, img_path, table_conversion="matplotlib")
-                    embutir_logos_na_imagem(img_path, cliente_alvo)
-                    res = enviar_evolution(img_path, cliente_alvo, agora.strftime('%d/%m/%Y'), f"Janela {horario_alvo}")
-                    st.success(res)
-                else: st.warning("Nenhuma viagem encontrada para este filtro.")
-            else: st.error(f"Aba {nome_aba} não encontrada na planilha.")
-        except Exception as e: st.error(f"Erro no processamento: {e}")
-    st.stop()
+        df_bruto = pd.read_excel(xls, sheet_name=nome_aba, header=None)
+        linha_cab = next((i for i, r in df_bruto.iterrows() if any(str(v).strip().upper() == COLUNA_FILTRO_HORA for v in r.values)), None)
+        df = df_bruto.iloc[linha_cab + 1:].reset_index(drop=True)
+        df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cab]]
+        
+        def converter_tempo(v):
+            try:
+                dt = v if hasattr(v, 'hour') else pd.to_datetime(str(v).replace('h', ':').strip())
+                return agora.replace(hour=dt.hour, minute=dt.minute, second=0)
+            except: return pd.NaT
 
-# ==========================================
-# INTERFACE MANUAL (VISUAL)
-# ==========================================
-st.title("Gerador de Escalas Mimo 🚌")
-st.info("Painel ativo. Utilize o n8n para envios automáticos agendados.")
+        df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(converter_tempo)
+        df_filtrado = df[(df[COL_EMPRESA].str.contains(cliente_alvo, na=False)) & (df['AUX_TIME'] >= inicio_filtro) & (df['AUX_TIME'] <= fim_filtro)].copy()
+        
+        if df_filtrado.empty:
+            return jsonify({"status": "vazio", "msg": "Nenhuma viagem encontrada"}), 200
 
-# (Aqui você pode manter seu código do botão manual se desejar)
+        img_path = f"auto_{cliente_alvo}.png"
+        cols_p = [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA]
+        style = df_filtrado[cols_p].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'}).set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
+        
+        dfi.export(style, img_path, table_conversion="matplotlib")
+        embutir_logos_na_imagem(img_path, cliente_alvo)
+        
+        resultado = enviar_evolution(img_path, cliente_alvo, agora.strftime('%d/%m/%Y'), f"Janela {horario_alvo}")
+        return jsonify({"status": "sucesso", "resultado": resultado}), 200
+
+    except Exception as e:
+        return jsonify({"status": "erro", "detalhe": str(e)}), 500
+
+if __name__ == '__main__':
+    # A API roda na porta 5000 por padrão
+    app.run(host='0.0.0.0', port=5000)
