@@ -13,15 +13,11 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copia todo o resto do seu projeto (app.py, webhook_n8n.py, logos, fonte)
+# Copia todo o resto do seu projeto (app.py, logos, fonte)
 COPY . .
 
-# Dá permissão para o Linux executar o arquivo de arranque
-RUN chmod +x start.sh
-
-# Libera as duas portas (Painel e Webhook)
+# Libera a porta do Painel
 EXPOSE 8501
-EXPOSE 5000
 
-# Comando final que liga tudo
-CMD ["./start.sh"]
+# Comando final que liga o painel com as proteções de robô DESATIVADAS
+CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.enableCORS=false", "--server.enableXsrfProtection=false"]
