@@ -114,32 +114,41 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    headers = {
+    headers_evolution = {
         "Content-Type": "application/json",
         "apikey": CHAVE_API_EVOLUTION
     }
 
     try:
+        # 1. Lê a imagem e converte para Base64
         with open(imagem_path, 'rb') as f:
             img_bytes = f.read()
+            base64_data = base64.b64encode(img_bytes).decode('ascii')
             
-            # 1. BASE64 100% LIMPO: Remove qualquer quebra de linha que cause o bug [object Object]
-            base64_data = base64.b64encode(img_bytes).decode('ascii').replace('\n', '').replace('\r', '').strip()
-            
-            # 2. PREFIXO OBRIGATÓRIO: Sem isso, dá o erro "Owned media must be a url or base64"
-            base64_img = f"data:image/png;base64,{base64_data}"
+        # 2. O DRIBLE: Upload automático pro Imgur (Chave pública liberada)
+        headers_imgur = {"Authorization": "Client-ID 116da7ee30f0fbf"}
         
-        # 3. PAYLOAD NA RAIZ: Sem isso, dá o erro "requires mediatype"
+        resp_upload = requests.post(
+            "https://api.imgur.com/3/image", 
+            headers=headers_imgur, 
+            data={"image": base64_data}
+        )
+        
+        if resp_upload.status_code != 200:
+            return f"❌ Erro ao hospedar imagem: {resp_upload.text}"
+            
+        # Pega o link direto da imagem (ex: https://i.imgur.com/abc1234.png)
+        link_imagem = resp_upload.json().get('data', {}).get('link', '')
+
+        # 3. Manda SÓ O LINK para a Evolution API
         payload = {
             "number": id_grupo,
             "mediatype": "image",
-            "mimetype": "image/png",
-            "caption": msg,
-            "media": base64_img,
-            "fileName": "escala.png"
+            "media": link_imagem,
+            "caption": msg
         }
 
-        resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
+        resp = requests.post(URL_EVOLUTION, headers=headers_evolution, json=payload)
             
         if resp.status_code in [200, 201]:
             return "✅ Escala enviada com sucesso pela Evolution API!"
