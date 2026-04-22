@@ -35,7 +35,7 @@ MAPA_LOGOS = {
 MAPA_GRUPOS = {
     "MELI": "120363000000000000@g.us", 
     "AMAZON": "120363000000000001@g.us", 
-    "ADORO": "120363000000000002@g.us", 
+    "ADORO": "5511917623237", 
     "AAM": "5511934773679@c.us" # Na Evolution, o formato para número normal costuma ser @s.whatsapp.net, mas para enviar diretamente pelo número, basta colocar só os números ex: "5511934773679"
 }
 
