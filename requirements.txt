@@ -6,3 +6,4 @@ dataframe-image
 matplotlib
 pytz
 Pillow
+Flask
