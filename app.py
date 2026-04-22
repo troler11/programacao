@@ -108,31 +108,32 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     if not id_grupo: 
         return f"⚠️ Destino não configurado para: {nome_empresa}"
 
-    # Limpeza do número caso não seja grupo (A Evolution aceita apenas os números limpos para DMs)
+    # Limpeza do número caso não seja grupo
     if "@c.us" in id_grupo:
         id_grupo = id_grupo.replace("@c.us", "")
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    # Cabeçalhos da Evolution API
     headers = {
         "Content-Type": "application/json",
         "apikey": CHAVE_API_EVOLUTION
     }
 
     try:
-        # Lê a imagem gerada e converte para Base64
+        # Lê a imagem e converte
         with open(imagem_path, 'rb') as f:
             img_bytes = f.read()
-            base64_img = base64.b64encode(img_bytes).decode('utf-8')
+            base64_data = base64.b64encode(img_bytes).decode('utf-8')
+            
+            # O SEGREDO AQUI: Prefixo obrigatório da Evolution API
+            base64_img = f"data:image/png;base64,{base64_data}"
         
-        # Payload exclusivo da Evolution API
         payload = {
             "number": id_grupo,
             "mediatype": "image",
             "mimetype": "image/png",
             "caption": msg,
-            "media": base64_img,
+            "media": base64_img, # Agora com o prefixo correto!
             "fileName": "escala.png"
         }
 
