@@ -74,7 +74,7 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         # Tenta carregar uma fonte, se falhar usa a padrão
         try:
             # Em servidores Linux/Docker geralmente tem essa fonte
-            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 28)
+            font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
         except:
             font = ImageFont.load_default()
 
