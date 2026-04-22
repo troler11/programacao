@@ -1,8 +1,7 @@
 streamlit
 pandas
-openpyxl
 requests
-dataframe-image
-matplotlib
+dataframe_image
+openpyxl
 pytz
 Pillow
