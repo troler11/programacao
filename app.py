@@ -110,7 +110,7 @@ def gerar_planilha_formatada(df, cliente_id):
     ws = wb.active
     fill_vermelho = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
     fonte_branca = Font(color="FFFFFF", bold=True)
-    fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=16)
+    fonte_vermelha_titulo = Font(color="FF0000", bold=True, size=25)
     
     try:
         logo_esq = OpenpyxlImage('logo_mimo.png')
