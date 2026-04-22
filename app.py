@@ -13,6 +13,7 @@ import os
 
 from PIL import Image, ImageDraw, ImageFont
 
+st.set_page_config(page_title="Gestão Mimo", layout="centered")
 # ==========================================
 # CONFIGURAÇÕES
 # ==========================================
@@ -185,7 +186,6 @@ if "api_n8n" in query_params:
 # ==========================================
 # INTERFACE PRINCIPAL (VISUAL HUMANO)
 # ==========================================
-st.set_page_config(page_title="Gestão Mimo", layout="centered")
 st.title("Gerador de Escalas por Cliente 🚌⏳")
 
 if 'clientes_processados' not in st.session_state:
