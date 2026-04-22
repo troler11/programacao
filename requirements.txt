@@ -5,3 +5,4 @@ requests
 dataframe-image
 matplotlib
 pytz
+Pillow
