@@ -10,10 +10,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.drawing.image import Image as OpenpyxlImage
 import os
-
 from PIL import Image, ImageDraw, ImageFont
 
+# ⚠️ OBRIGATÓRIO: Esta linha deve ser a primeira instrução visual do código
 st.set_page_config(page_title="Gestão Mimo", layout="centered")
+
 # ==========================================
 # CONFIGURAÇÕES
 # ==========================================
@@ -116,26 +117,35 @@ def gerar_planilha_formatada(df, cliente_id):
     return out
 
 # ==========================================
-# GATILHO INVISÍVEL DO N8N (A MÁGICA SEGURA)
+# GATILHO INVISÍVEL DO N8N (O ROBÔ)
 # ==========================================
-query_params = st.query_params
+# Extrai parâmetros de forma segura para qualquer versão do Streamlit
+try:
+    parametros = st.query_params.to_dict()
+except AttributeError:
+    parametros = st.experimental_get_query_params()
 
-if "api_n8n" in query_params:
+if "api_n8n" in parametros:
     st.title("⚙️ Robô Automático Executando...")
-    cliente_alvo = query_params.get("cliente", "").upper()
-    horario_alvo = query_params.get("horario", "")
+    
+    # Tratamento de segurança para dados extraídos da URL
+    cliente_alvo = parametros.get("cliente", "")
+    if isinstance(cliente_alvo, list): cliente_alvo = cliente_alvo[0]
+    cliente_alvo = str(cliente_alvo).upper()
+    
+    horario_alvo = parametros.get("horario", "")
+    if isinstance(horario_alvo, list): horario_alvo = horario_alvo[0]
+    horario_alvo = str(horario_alvo)
     
     if cliente_alvo and horario_alvo:
         try:
             fuso = pytz.timezone('America/Sao_Paulo')
             agora = datetime.now(fuso).replace(tzinfo=None)
             
-            # 1. Matemática da Janela de 2 Horas
             hora_obj = datetime.strptime(horario_alvo, '%H:%M').time()
             inicio_filtro = agora.replace(hour=hora_obj.hour, minute=hora_obj.minute, second=0, microsecond=0)
             fim_filtro = inicio_filtro + timedelta(hours=2)
             
-            # 2. Baixa e lê o Google Sheets do dia
             r = requests.get(URL_PLANILHA)
             xls = pd.ExcelFile(r.content)
             nome_aba = agora.strftime("%d%m%Y")
@@ -156,7 +166,6 @@ if "api_n8n" in query_params:
 
                 df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(converter_tempo)
                 
-                # 3. Filtra pelo Cliente e pela Janela exata
                 df_filtrado = df[
                     (df[COL_EMPRESA].str.contains(cliente_alvo, na=False)) & 
                     (df['AUX_TIME'] >= inicio_filtro) & 
@@ -181,7 +190,9 @@ if "api_n8n" in query_params:
                 st.error("Aba não encontrada.")
         except Exception as e:
             st.error(f"Erro Crítico: {e}")
-    st.stop() # Finaliza aqui. O robô invisível não mostra botões!
+            
+    # MATA O CÓDIGO AQUI PARA O ROBÔ NÃO DESENHAR A TELA VISUAL
+    st.stop()
 
 # ==========================================
 # INTERFACE PRINCIPAL (VISUAL HUMANO)
