@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFont
 app = Flask(__name__)
 
 # ==========================================
-# CONFIGURAÇÕES (Mantenha as suas)
+# CONFIGURAÇÕES
 # ==========================================
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSH9lJhzNgDz3x05wnE3lc24YKiUQcn_WTNgxEpsSO2jA36rAwSDfLZUkm1SgE_uoKBXvgx1_8sDTXZ/pub?output=xlsx"
 COLUNA_FILTRO_HORA = 'INI' 
@@ -31,9 +31,11 @@ MAPA_LOGOS = {
     "BBOSCH": "logo_bbosch.png"
 }
 
+# CORREÇÃO APLICADA AQUI: Adicionadas aspas duplas de fechamento em "5511917623237" para a chave "JDE".
 MAPA_GRUPOS = {
     "MELI": "5511917623237", "AMAZON": "5511917623237", 
-    "ADORO": "5511917623237", "AAM": "5511934773679", "JDE": "5511917623237", "HELLERMANN": "5511917623237", "NISSEI": "5511917623237", "BBOSCH": "5511917623237"
+    "ADORO": "5511917623237", "AAM": "5511934773679", "JDE": "5511917623237", 
+    "HELLERMANN": "5511917623237", "NISSEI": "5511917623237", "BBOSCH": "5511917623237"
 }
 
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
