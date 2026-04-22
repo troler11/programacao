@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copia todo o resto do seu projeto (app.py, logos, fonte)
 COPY . .
 
-# Libera a porta do Painel
+# Libera a porta principal do Painel
 EXPOSE 8501
 
-# Comando final que liga o painel com as proteções de robô DESATIVADAS
+# Comando final com proteção CORS e XSRF desativadas, e modo headless ativado
 CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.enableCORS=false", "--server.enableXsrfProtection=false", "--server.headless=true"]
