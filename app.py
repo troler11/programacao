@@ -108,38 +108,44 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     if not id_grupo: 
         return f"⚠️ Destino não configurado para: {nome_empresa}"
 
-    # Limpeza do número caso não seja grupo (A Evolution aceita apenas os números limpos para DMs)
+    # Limpeza do número caso não seja grupo
     if "@c.us" in id_grupo:
         id_grupo = id_grupo.replace("@c.us", "")
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    # O SEGREDO AQUI: NÃO coloque "Content-Type"! 
-    # O Python vai gerar o cabeçalho 'multipart/form-data' automaticamente.
     headers = {
+        "Content-Type": "application/json",
         "apikey": CHAVE_API_EVOLUTION
     }
 
     try:
-        # Payload com os dados em texto
+        # 1. O GOLPE DE MESTRE: Hospedar a imagem na nuvem temporariamente (grátis e sem chave de API)
+        with open(imagem_path, 'rb') as f:
+            resp_upload = requests.post(
+                'https://catbox.moe/user/api.php', 
+                data={'reqtype': 'fileupload'}, 
+                files={'fileToUpload': f}
+            )
+        
+        if resp_upload.status_code != 200:
+            return f"❌ Erro interno ao converter imagem em Link."
+        
+        # Pega o link direto gerado (ex: https://files.catbox.moe/arquivo.png)
+        link_imagem = resp_upload.text.strip() 
+        
+        # 2. Enviar o LINK para a Evolution API em JSON puro. Acabou a briga!
         payload = {
             "number": id_grupo,
             "mediatype": "image",
+            "media": link_imagem,
             "caption": msg
         }
 
-        # Lemos a imagem direto do disco sem converter pra texto
-        with open(imagem_path, 'rb') as f:
-            # Enviamos o arquivo físico como anexo
-            files = {
-                "file": ("escala.png", f, "image/png")
-            }
-
-            # Usamos 'data=payload' e 'files=files' para forçar o Multipart Form-Data
-            resp = requests.post(URL_EVOLUTION, headers=headers, data=payload, files=files)
+        resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
             
         if resp.status_code in [200, 201]:
-            return "✅ Imagem enviada com sucesso pela Evolution API!"
+            return "✅ Escala enviada com sucesso pela Evolution API!"
         else:
             return f"❌ Erro Evolution ({resp.status_code}): {resp.text}"
             
