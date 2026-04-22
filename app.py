@@ -46,8 +46,8 @@ MAPA_GRUPOS = {
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
 
 # A chave global configurada na variável AUTHENTICATION_API_KEY no Easypanel
-CHAVE_API_EVOLUTION = "429683C4C977415CAAFCCE10F7D57E11" 
-
+CHAVE_API_EVOLUTION = "429683C4C977415CAAFCCE10F7D57E11", 
+CHAVE_IMGBB = "193887e1a105790a944b4a758b5e231f" 
 # ==========================================
 # FUNÇÕES DE APOIO
 # ==========================================
@@ -103,6 +103,9 @@ def gerar_planilha_formatada(df, cliente_id):
     out.seek(0)
     return out
 
+# Lembre-se de colocar isso lá no topo do arquivo app.py!
+# CHAVE_IMGBB = "cole_sua_chave_do_imgbb_aqui"
+
 def enviar_evolution(imagem_path, nome_empresa, data_str):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
     if not id_grupo: 
@@ -120,27 +123,27 @@ def enviar_evolution(imagem_path, nome_empresa, data_str):
     }
 
     try:
-        # 1. Lê a imagem e converte para Base64
+        # 1. Lê a imagem gerada
         with open(imagem_path, 'rb') as f:
             img_bytes = f.read()
             base64_data = base64.b64encode(img_bytes).decode('ascii')
             
-        # 2. O DRIBLE: Upload automático pro Imgur (Chave pública liberada)
-        headers_imgur = {"Authorization": "Client-ID 116da7ee30f0fbf"}
-        
+        # 2. Upload para o ImgBB (Com a SUA chave exclusiva, sem limites bloqueando)
         resp_upload = requests.post(
-            "https://api.imgur.com/3/image", 
-            headers=headers_imgur, 
-            data={"image": base64_data}
+            "https://api.imgbb.com/1/upload", 
+            data={
+                "key": CHAVE_IMGBB,
+                "image": base64_data
+            }
         )
         
         if resp_upload.status_code != 200:
-            return f"❌ Erro ao hospedar imagem: {resp_upload.text}"
+            return f"❌ Erro ImgBB ({resp_upload.status_code}): {resp_upload.text}"
             
-        # Pega o link direto da imagem (ex: https://i.imgur.com/abc1234.png)
-        link_imagem = resp_upload.json().get('data', {}).get('link', '')
+        # Pega a URL direta e oficial da imagem gerada pelo ImgBB
+        link_imagem = resp_upload.json().get('data', {}).get('url', '')
 
-        # 3. Manda SÓ O LINK para a Evolution API
+        # 3. Manda a URL limpa para a Evolution API!
         payload = {
             "number": id_grupo,
             "mediatype": "image",
