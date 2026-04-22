@@ -36,14 +36,17 @@ MAPA_GRUPOS = {
     "MELI": "120363000000000000@g.us", 
     "AMAZON": "120363000000000001@g.us", 
     "ADORO": "120363000000000002@g.us", 
-    "AAM": "5511934773679@c.us"
+    "AAM": "5511934773679@c.us" # Na Evolution, o formato para número normal costuma ser @s.whatsapp.net, mas para enviar diretamente pelo número, basta colocar só os números ex: "5511934773679"
 }
 
-URL_WAHA = "https://mimo-wahaa.3sbqz4.easypanel.host/api/sendImage"
-SESSAO_WAHA = "default"
+# ==========================================
+# CONFIGURAÇÕES DA EVOLUTION API
+# ==========================================
+# Exemplo de URL: https://sua-url-no-easypanel.host/message/sendMedia/mimo (onde 'mimo' é o nome da instância que você criou)
+URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
 
-# ATENÇÃO: Se não houver senha configurada no Easypanel, deixe vazio: ""
-CHAVE_API_WAHA = "teste"
+# A chave global configurada na variável AUTHENTICATION_API_KEY no Easypanel
+CHAVE_API_EVOLUTION = "sua_senha_aqui" 
 
 # ==========================================
 # FUNÇÕES DE APOIO
@@ -100,20 +103,22 @@ def gerar_planilha_formatada(df, cliente_id):
     out.seek(0)
     return out
 
-def enviar_waha(imagem_path, nome_empresa, data_str):
+def enviar_evolution(imagem_path, nome_empresa, data_str):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
     if not id_grupo: 
-        return f"⚠️ Grupo não configurado para: {nome_empresa}"
+        return f"⚠️ Destino não configurado para: {nome_empresa}"
+
+    # Limpeza do número caso não seja grupo (A Evolution aceita apenas os números limpos para DMs)
+    if "@c.us" in id_grupo:
+        id_grupo = id_grupo.replace("@c.us", "")
 
     msg = f"🚌 *Programação de Escala*\n🏢 *Cliente:* {nome_empresa}\n📅 *Data:* {data_str}\n⏱️ *Janela:* Próximas 3h"
     
-    # Cabeçalhos forçando JSON puro
+    # Cabeçalhos da Evolution API
     headers = {
-        "accept": "application/json",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "apikey": CHAVE_API_EVOLUTION
     }
-    if CHAVE_API_WAHA: 
-        headers["X-Api-Key"] = CHAVE_API_WAHA
 
     try:
         # Lê a imagem gerada e converte para Base64
@@ -121,25 +126,22 @@ def enviar_waha(imagem_path, nome_empresa, data_str):
             img_bytes = f.read()
             base64_img = base64.b64encode(img_bytes).decode('utf-8')
         
-        # Monta o pacote JSON exatamente como o WAHA exige
+        # Payload exclusivo da Evolution API
         payload = {
-            "session": SESSAO_WAHA,
-            "chatId": id_grupo,
+            "number": id_grupo,
+            "mediatype": "image",
+            "mimetype": "image/png",
             "caption": msg,
-            "file": {
-                "mimetype": "image/png",
-                "filename": "escala.png",
-                "data": base64_img
-            }
+            "media": base64_img,
+            "fileName": "escala.png"
         }
 
-        # Envio como JSON Puro
-        resp = requests.post(URL_WAHA, headers=headers, json=payload)
+        resp = requests.post(URL_EVOLUTION, headers=headers, json=payload)
             
         if resp.status_code in [200, 201]:
-            return "✅ Enviado com sucesso!"
+            return "✅ Imagem enviada com sucesso pela Evolution API!"
         else:
-            return f"❌ Erro WAHA ({resp.status_code}): {resp.text}"
+            return f"❌ Erro Evolution ({resp.status_code}): {resp.text}"
             
     except Exception as e:
         return f"❌ Falha de conexão: {e}"
@@ -160,7 +162,6 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             fuso = pytz.timezone('America/Sao_Paulo')
             agora = datetime.now(fuso).replace(tzinfo=None)
             
-            # Margem: Busca desde 20 min atrás até 3 horas na frente
             inicio_filtro = agora - timedelta(minutes=20)
             fim_filtro = agora + timedelta(hours=3)
             
@@ -182,7 +183,6 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
             df.columns = [str(c).strip().upper() for c in df_bruto.iloc[linha_cabecalho]]
             df = df.dropna(subset=[COLUNA_FILTRO_HORA]) 
 
-            # CONVERSOR DE HORA ULTRA-RESISTENTE
             def converter_tempo(v):
                 if pd.isna(v): return pd.NaT
                 try:
@@ -196,8 +196,6 @@ if st.button("1. Analisar Planilha e Gerar Prévias", type="primary"):
                     return pd.NaT
 
             df['AUX_TIME'] = df[COLUNA_FILTRO_HORA].apply(converter_tempo)
-            
-            # Filtro
             df_filtrado = df[(df['AUX_TIME'] >= inicio_filtro) & (df['AUX_TIME'] <= fim_filtro)].copy()
 
             if df_filtrado.empty:
@@ -235,8 +233,8 @@ if st.session_state.clientes_processados:
             st.image(dados["img"])
             c1, c2 = st.columns(2)
             with c1:
-                if st.button(f"📲 Enviar WhatsApp: {nome}", key=f"btn_{nome}"):
-                    res = enviar_waha(dados["img"], nome, dados["data_str"])
+                if st.button(f"📲 Enviar via Evolution API: {nome}", key=f"btn_{nome}"):
+                    res = enviar_evolution(dados["img"], nome, dados["data_str"])
                     if "✅" in res:
                         st.success(res)
                     else:
