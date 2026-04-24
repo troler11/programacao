@@ -68,7 +68,7 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         w_texto = draw.textlength(texto_titulo, font=font)
         
         # CORREÇÃO 2: Subimos o texto para Y=65 para ficar bem no meio do cabeçalho
-        draw.text(((nova_largura - w_texto) // 2, 80), texto_titulo, fill=(255, 0, 0), font=font)
+        draw.text(((nova_largura - w_texto) // 2, 110), texto_titulo, fill=(255, 0, 0), font=font)
         
         # Logo Mimo
         try:
