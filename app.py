@@ -24,19 +24,17 @@ COL_PREFIXO = 'FROTA FINAL'
 COL_MOTORISTA = 'MOTORISTA'   
 
 MAPA_LOGOS = {
-    "MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png", 
-    "AMAZON": "logo_amazon.png", "ADORO": "logo_adoro.png", 
-    "AAM": "logo_aam.png", "JDE": "logo_jde.png", 
+    "MELI": "logo_meli.png", "MERCADO LIVRE": "logo_meli.png", "ADORO": "logo_adoro.png", 
+    "AAM": "logo_aam.png", "JDE": "logo_jde.png", "CMR": "logo_cmr.png",
     "HELLERMANN": "logo_hellermann.png", "NISSEI": "logo_nissei.png", 
-    "BBOSCH": "logo_bbosch.png", "CPQ": "logo_cpq.png", "RD": "logo_rd.png", "SILGAN": "logo_silgan.png", "THEOTO": "logo_theoto.png", "SPUMAPAC": "logo_spumapac.png"
+    "B BOSCH": "logo_bbosch.png", "CPQ": "logo_cpq.png", "EUROFARMA LABORATORIOS S.A.": "logo_rd.png", "SILGAN": "logo_silgan.png", "THEOTO": "logo_theoto.png", "SPUMAPAC": "logo_spumapac.png", "BOLLHOFF": "logo_bollhoff.png"
 }
 
 # CORREÇÃO APLICADA AQUI: Adicionadas aspas duplas de fechamento em "5511917623237" para a chave "JDE".
 MAPA_GRUPOS = {
-    "MELI": "5511917623237", "AMAZON": "5511917623237", 
-    "ADORO": "5511917623237", "AAM": "5511934773679", "JDE": "5511917623237", 
-    "HELLERMANN": "5511917623237", "NISSEI": "5511973821751", "BBOSCH": "5511917623237", "CPQ": "5511917623237", 
-    "RD": "5511917623237", "SILGAN": "5511917623237", "THEOTO": "5511917623237", "SPUMAPAC": "5511917623237"
+    "MELI": "5511917623237", "ADORO": "5511917623237", "AAM": "5511934773679", "JDE": "5511917623237", "CMR": "5511917623237",
+    "HELLERMANN": "5511917623237", "NISSEI": "5511973821751", "B BOSCH": "5511917623237", "CPQ": "5511917623237", 
+    "EUROFARMA LABORATORIOS S.A.": "5511917623237", "SILGAN": "5511917623237", "THEOTO": "5511917623237", "SPUMAPAC": "5511917623237", "BOLLHOFF": "5511917623237"
 }
 
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
