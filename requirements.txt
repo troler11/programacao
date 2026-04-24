@@ -7,4 +7,3 @@ pytz
 Pillow
 matplotlib
 playwright
-chromium
