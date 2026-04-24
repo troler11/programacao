@@ -6,3 +6,5 @@ openpyxl
 pytz
 Pillow
 matplotlib
+playwright
+chromium
