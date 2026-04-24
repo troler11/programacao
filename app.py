@@ -149,27 +149,25 @@ def gerar_escala():
             cols_p = [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA]
             
             style = (df_filtrado[cols_p].style
-                .hide(axis='index')  # Esconde a coluna de índices numéricos
+                .hide(axis='index')
                 .set_properties(**{
                     'background-color': 'white', 
                     'color': 'black', 
-                    'border': '1px solid black',  # Borda no conteúdo
-                    'text-align': 'center'        # Centraliza o texto das linhas
+                    # Quebrando a propriedade border para o matplotlib entender:
+                    'border-color': 'black',
+                    'border-width': '1px',
+                    'border-style': 'solid',
+                    'text-align': 'center'
                 })
                 .set_table_styles([
-                    # Estilo da tabela para colar as bordas
-                    {'selector': 'table', 'props': [('border-collapse', 'collapse'), ('border', '1px solid black')]},
-                    # Estilo exclusivo do cabeçalho
                     {'selector': 'th', 'props': [
                         ('background-color', '#FF0000'), 
                         ('color', 'white'), 
-                        ('border', '1px solid black'), 
+                        ('border-color', 'black'),
+                        ('border-width', '1px'),
+                        ('border-style', 'solid'),
                         ('text-align', 'center'),
                         ('font-weight', 'bold')
-                    ]},
-                    # Estilo reforçado para as células de dados
-                    {'selector': 'td', 'props': [
-                        ('border', '1px solid black')
                     ]}
                 ])
             )
