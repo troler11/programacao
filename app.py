@@ -73,7 +73,7 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
                 if chave in cliente_nome:
                     cliente_logo = Image.open(arquivo)
                     cliente_logo.thumbnail((200, 80))
-                    nova_img.paste(cliente_logo, (nova_largura - 180, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
+                    nova_img.paste(cliente_logo, (nova_largura - 150, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
                     break
         except: pass
         nova_img.save(img_path)
