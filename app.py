@@ -25,10 +25,10 @@ COL_MOTORISTA = 'MOTORISTA'
 
 MAPA_LOGOS = {
     "MELI RC01": "logo_meli.png", "MELI SP09/15": "logo_meli.png", "MELI SP10": "logo_meli.png", "ADORO": "logo_adoro.png", 
-    "AAM": "logo_aam.png", "JDE": "logo_jde.png", "CMR": "logo_cmr.png", "RAIA DROGASIL S/A": "logo_drogasil.png",
+    "AAM": "logo_aam.png", "JDE": "logo_jde.png", "CMR": "logo_cmr.png", "RAIA DROGASIL S/A": "logo_rd.jpg",
     "HELLERMANN": "logo_hellermann.png", "NISSEI": "logo_nissei.png", "WEIR": "logo_weir.png",
-    "B BOSCH": "logo_bbosch.png", "CPQ": "logo_cpq.png", "EUROFARMA LABORATORIOS S.A.": "logo_raia.png", "SILGAN": "logo_silgan.png", 
-    "THEOTO S A": "logo_theoto.png", "SPUMAPAC": "logo_spumapac.png", "BOLLHOFF": "logo_bollhoff.jpg"
+    "B BOSCH": "logo_bbosch.png", "CPQ": "logo_cpq.png", "EUROFARMA LABORATORIOS S.A.": "logo_raia.jpg", "SILGAN": "logo_silgan.png", 
+    "THEOTO S A": "logo_theoto.jpg", "SPUMAPAC": "logo_spumapac.png", "BOLLHOFF": "logo_bollhoff.png"
 }
 
 # CORREÇÃO APLICADA AQUI: Adicionadas aspas duplas de fechamento em "5511917623237" para a chave "JDE".
