@@ -69,24 +69,28 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         except: pass
         
         # Logo Cliente (Canto Superior Direito - CORRIGIDO)
-        try:
+       try:
             for chave, arquivo in MAPA_LOGOS.items():
                 if chave in cliente_nome:
                     cliente_logo = Image.open(arquivo)
-                    # Mantém proporção com no máx 200px largura e 80px altura
-                    cliente_logo.thumbnail((200, 80)) 
                     
-                    # PEGA A LARGURA REAL DO LOGO APÓS REDIMENSIONAR
+                    # Tenta usar o filtro de alta qualidade (LANCZOS)
+                    try: filtro = Image.Resampling.LANCZOS
+                    except AttributeError: filtro = Image.LANCZOS # Fallback para Pillow antigo
+                    
+                    # AUMENTAMOS O LIMITE AQUI: Max 300px de largura e 110px de altura
+                    cliente_logo.thumbnail((300, 110), filtro) 
+                    
+                    # Pega a largura real do logo após redimensionar
                     largura_real_logo, _ = cliente_logo.size
                     
-                    # Define uma margem da direita (ex: 10px)
-                    margem_direita = 10
+                    # Margem direita (aumentei para 20px para ficar mais elegante com o logo maior)
+                    margem_direita = 20
                     
-                    # CALCULA A POSIÇÃO X DINAMICAMENTE:
-                    # Largura total - largura real do logo - margem desejada
+                    # Calcula a posição X dinamicamente
                     posicao_x_direita = nova_largura - largura_real_logo - margem_direita
                     
-                    # Cola o logo (mantendo os 20px de margem do topo)
+                    # Cola o logo 
                     nova_img.paste(cliente_logo, (posicao_x_direita, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
                     break
         except: pass
