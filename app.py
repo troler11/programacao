@@ -147,7 +147,32 @@ def gerar_escala():
 
             img_path = f"temp_{cliente}.png"
             cols_p = [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA]
-            style = df_filtrado[cols_p].style.set_properties(**{'background-color': 'white', 'color': 'black', 'border': '1px solid black'}).set_table_styles([{'selector': 'th', 'props': [('background-color', '#FF0000'), ('color', 'white')]}])
+            
+            style = (df_filtrado[cols_p].style
+                .hide(axis='index')  # Esconde a coluna de índices numéricos
+                .set_properties(**{
+                    'background-color': 'white', 
+                    'color': 'black', 
+                    'border': '1px solid black',  # Borda no conteúdo
+                    'text-align': 'center'        # Centraliza o texto das linhas
+                })
+                .set_table_styles([
+                    # Estilo da tabela para colar as bordas
+                    {'selector': 'table', 'props': [('border-collapse', 'collapse'), ('border', '1px solid black')]},
+                    # Estilo exclusivo do cabeçalho
+                    {'selector': 'th', 'props': [
+                        ('background-color', '#FF0000'), 
+                        ('color', 'white'), 
+                        ('border', '1px solid black'), 
+                        ('text-align', 'center'),
+                        ('font-weight', 'bold')
+                    ]},
+                    # Estilo reforçado para as células de dados
+                    {'selector': 'td', 'props': [
+                        ('border', '1px solid black')
+                    ]}
+                ])
+            )
             
             dfi.export(style, img_path, table_conversion="matplotlib")
             embutir_logos_na_imagem(img_path, cliente)
