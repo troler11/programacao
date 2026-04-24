@@ -28,7 +28,7 @@ MAPA_LOGOS = {
     "AAM": "logo_aam.png", "JDE": "logo_jde.png", "CMR": "logo_cmr.png", "RAIA DROGASIL S/A": "logo_rd.jpg",
     "HELLERMANN": "logo_hellermann.png", "NISSEI": "logo_nissei.png", "WEIR": "logo_weir.png",
     "B BOSCH": "logo_bbosch.png", "CPQ": "logo_cpq.png", "EUROFARMA LABORATORIOS S.A.": "logo_raia.jpg", "SILGAN": "logo_silgan.png", 
-    "THEOTO S A": "logo_theoto.jpg", "SPUMAPAC": "logo_spumapac.png", "BOLLHOFF": "logo_bollhoff.png"
+    "THEOTO S A": "logo_theoto.jpg", "SPUMAPAC": "logo_spumapac.png", "BOLLHOFF": "logo_bollhoff.png", "MELI SP16": "logo_meli.png",  "MELI GRU 01 / ZN SP16": "logo_meli.png"
 }
 
 # CORREÇÃO APLICADA AQUI: Adicionadas aspas duplas de fechamento em "5511917623237" para a chave "JDE".
@@ -36,7 +36,7 @@ MAPA_GRUPOS = {
     "MELI RC01": "5511917623237", "ADORO": "5511917623237", "AAM": "5511934773679", "JDE": "5511917623237", "CMR": "5511917623237",
     "HELLERMANN": "5511917623237", "NISSEI": "5511973821751", "B BOSCH": "5511917623237", "CPQ": "5511917623237", "RAIA DROGASIL S/A": "5511917623237", 
     "EUROFARMA LABORATORIOS S.A.": "5511917623237", "SILGAN": "5511917623237", "THEOTO S A": "5511917623237", "SPUMAPAC": "5511917623237", "BOLLHOFF": "5511917623237",
-    "MELI SP09/15": "5511917623237", "MELI SP10": "5511917623237", "WEIR": "5511917623237"
+    "MELI SP09/15": "5511917623237", "MELI SP10": "5511917623237", "WEIR": "5511917623237", "MELI SP16": "5511917623237",  "MELI GRU 01 / ZN SP16": "5511917623237"
 }
 
 URL_EVOLUTION = "https://mimo-evolution-api.3sbqz4.easypanel.host/message/sendMedia/teste"
