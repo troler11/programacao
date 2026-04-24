@@ -60,20 +60,34 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         w_texto = draw.textlength(texto_titulo, font=font)
         draw.text(((nova_largura - w_texto) // 2, 100), texto_titulo, fill=(255, 0, 0), font=font)
         
-        # Logo Mimo
+        # Logo Mimo (Canto Superior Esquerdo)
         try:
             mimo = Image.open('logo_mimo.png')
             mimo.thumbnail((200, 80))
+            # 20px de margem da esquerda e do topo
             nova_img.paste(mimo, (20, 20), mimo if mimo.mode == 'RGBA' else None)
         except: pass
         
-        # Logo Cliente
+        # Logo Cliente (Canto Superior Direito - CORRIGIDO)
         try:
             for chave, arquivo in MAPA_LOGOS.items():
                 if chave in cliente_nome:
                     cliente_logo = Image.open(arquivo)
-                    cliente_logo.thumbnail((200, 80))
-                    nova_img.paste(cliente_logo, (nova_largura - 200, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
+                    # Mantém proporção com no máx 200px largura e 80px altura
+                    cliente_logo.thumbnail((200, 80)) 
+                    
+                    # PEGA A LARGURA REAL DO LOGO APÓS REDIMENSIONAR
+                    largura_real_logo, _ = cliente_logo.size
+                    
+                    # Define uma margem da direita (ex: 10px)
+                    margem_direita = 10
+                    
+                    # CALCULA A POSIÇÃO X DINAMICAMENTE:
+                    # Largura total - largura real do logo - margem desejada
+                    posicao_x_direita = nova_largura - largura_real_logo - margem_direita
+                    
+                    # Cola o logo (mantendo os 20px de margem do topo)
+                    nova_img.paste(cliente_logo, (posicao_x_direita, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
                     break
         except: pass
         nova_img.save(img_path)
