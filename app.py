@@ -153,26 +153,24 @@ def gerar_escala():
                 .set_properties(**{
                     'background-color': 'white', 
                     'color': 'black', 
-                    # Quebrando a propriedade border para o matplotlib entender:
-                    'border-color': 'black',
-                    'border-width': '1px',
-                    'border-style': 'solid',
+                    'border': '1px solid black',
                     'text-align': 'center'
                 })
                 .set_table_styles([
+                    {'selector': 'table', 'props': [('border-collapse', 'collapse'), ('border', '1px solid black')]},
                     {'selector': 'th', 'props': [
                         ('background-color', '#FF0000'), 
                         ('color', 'white'), 
-                        ('border-color', 'black'),
-                        ('border-width', '1px'),
-                        ('border-style', 'solid'),
+                        ('border', '1px solid black'), 
                         ('text-align', 'center'),
                         ('font-weight', 'bold')
-                    ]}
+                    ]},
+                    {'selector': 'td', 'props': [('border', '1px solid black')]}
                 ])
             )
             
-            dfi.export(style, img_path, table_conversion="matplotlib")
+            # MUDANÇA PRINCIPAL AQUI:
+            dfi.export(style, img_path, table_conversion="playwright")
             embutir_logos_na_imagem(img_path, cliente)
             
             status = enviar_evolution(img_path, cliente, agora.strftime('%d/%m/%Y'), f"Janela {horario_alvo}")
