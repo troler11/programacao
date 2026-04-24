@@ -138,6 +138,7 @@ def gerar_escala():
         fim_f = inicio_f + timedelta(hours=2)
 
         # Loop processando cada cliente da lista
+        # Loop processando cada cliente da lista
         for cliente in lista_clientes:
             df_filtrado = df_base[(df_base[COL_EMPRESA].str.contains(cliente, na=False)) & (df_base['AUX_TIME'] >= inicio_f) & (df_base['AUX_TIME'] <= fim_f)].copy()
             
@@ -145,7 +146,9 @@ def gerar_escala():
                 resultados_finais[cliente] = "Vazio (Sem viagens)"
                 continue
 
-            img_path = f"temp_{cliente}.png"
+            # CORREÇÃO: Substitui a barra por traço para criar um nome de arquivo válido no Linux
+            nome_seguro = cliente.replace('/', '-')
+            img_path = f"temp_{nome_seguro}.png"
             cols_p = [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA]
             
             style = (df_filtrado[cols_p].style
