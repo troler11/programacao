@@ -52,7 +52,7 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         
         altura_cabecalho = 160
         # CORREÇÃO 1: Aumentamos a largura mínima para 1100 para dar espaço aos logos maiores
-        nova_largura = max(largura_tabela, 1100) 
+        nova_largura = max(largura_tabela, 900) 
         
         nova_img = Image.new('RGB', (nova_largura, altura_tabela + altura_cabecalho), 'white')
         nova_img.paste(tabela_img, ((nova_largura - largura_tabela) // 2, altura_cabecalho))
@@ -68,7 +68,7 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         w_texto = draw.textlength(texto_titulo, font=font)
         
         # CORREÇÃO 2: Subimos o texto para Y=65 para ficar bem no meio do cabeçalho
-        draw.text(((nova_largura - w_texto) // 2, 110), texto_titulo, fill=(255, 0, 0), font=font)
+        draw.text(((nova_largura - w_texto) // 2, 115), texto_titulo, fill=(255, 0, 0), font=font)
         
         # Logo Mimo
         try:
