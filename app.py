@@ -55,47 +55,48 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         nova_img.paste(tabela_img, ((nova_largura - largura_tabela) // 2, altura_cabecalho))
         draw = ImageDraw.Draw(nova_img)
         texto_titulo = f"PROGRAMAÇÃO - {cliente_nome}"
-        try: font = ImageFont.truetype("DejaVuSans-Bold.ttf", 32)
-        except: font = ImageFont.load_default()
+        
+        try: 
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 32)
+        except: 
+            font = ImageFont.load_default()
+            
         w_texto = draw.textlength(texto_titulo, font=font)
         draw.text(((nova_largura - w_texto) // 2, 100), texto_titulo, fill=(255, 0, 0), font=font)
         
-        # Logo Mimo (Canto Superior Esquerdo)
+        # Logo Mimo
         try:
             mimo = Image.open('logo_mimo.png')
             mimo.thumbnail((200, 80))
-            # 20px de margem da esquerda e do topo
             nova_img.paste(mimo, (20, 20), mimo if mimo.mode == 'RGBA' else None)
-        except: pass
+        except: 
+            pass
         
-        # Logo Cliente (Canto Superior Direito - CORRIGIDO)
-       try:
+        # Logo Cliente
+        try:
             for chave, arquivo in MAPA_LOGOS.items():
                 if chave in cliente_nome:
                     cliente_logo = Image.open(arquivo)
                     
-                    # Tenta usar o filtro de alta qualidade (LANCZOS)
-                    try: filtro = Image.Resampling.LANCZOS
-                    except AttributeError: filtro = Image.LANCZOS # Fallback para Pillow antigo
-                    
-                    # AUMENTAMOS O LIMITE AQUI: Max 300px de largura e 110px de altura
+                    try: 
+                        filtro = Image.Resampling.LANCZOS
+                    except AttributeError: 
+                        filtro = Image.LANCZOS
+                        
                     cliente_logo.thumbnail((300, 110), filtro) 
-                    
-                    # Pega a largura real do logo após redimensionar
                     largura_real_logo, _ = cliente_logo.size
-                    
-                    # Margem direita (aumentei para 20px para ficar mais elegante com o logo maior)
                     margem_direita = 20
-                    
-                    # Calcula a posição X dinamicamente
                     posicao_x_direita = nova_largura - largura_real_logo - margem_direita
                     
-                    # Cola o logo 
                     nova_img.paste(cliente_logo, (posicao_x_direita, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
                     break
-        except: pass
+        except: 
+            pass
+            
         nova_img.save(img_path)
-    except Exception as e: print(f"Erro imagem: {e}")
+        
+    except Exception as e: 
+        print(f"Erro imagem: {e}")
 
 def enviar_evolution(imagem_path, nome_empresa, data_str, contexto):
     id_grupo = next((v for k, v in MAPA_GRUPOS.items() if k in nome_empresa), None)
