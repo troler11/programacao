@@ -89,7 +89,7 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
                     except AttributeError: 
                         filtro = Image.LANCZOS
                         
-                    cliente_logo.thumbnail((300, 110), filtro) 
+                    cliente_logo.thumbnail((210, 90), filtro) 
                     largura_real_logo, _ = cliente_logo.size
                     margem_direita = 20
                     posicao_x_direita = nova_largura - largura_real_logo - margem_direita
