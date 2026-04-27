@@ -53,7 +53,6 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
         largura_tabela, altura_tabela = tabela_img.size
         
         altura_cabecalho = 160
-        # CORREÇÃO 1: Aumentamos a largura mínima para 1100 para dar espaço aos logos maiores
         nova_largura = max(largura_tabela, 900) 
         
         nova_img = Image.new('RGB', (nova_largura, altura_tabela + altura_cabecalho), 'white')
@@ -68,39 +67,49 @@ def embutir_logos_na_imagem(img_path, cliente_nome):
             font = ImageFont.load_default()
             
         w_texto = draw.textlength(texto_titulo, font=font)
-        
-        # CORREÇÃO 2: Subimos o texto para Y=65 para ficar bem no meio do cabeçalho
         draw.text(((nova_largura - w_texto) // 2, 115), texto_titulo, fill=(255, 0, 0), font=font)
         
-        # Logo Mimo
-        try:
-            mimo = Image.open('logo_mimo.png')
-            mimo.thumbnail((200, 80))
-            nova_img.paste(mimo, (20, 20), mimo if mimo.mode == 'RGBA' else None)
-        except: 
-            pass
+        # ==========================================
+        # DEFINIÇÃO DOS ARQUIVOS (ESQUERDA E DIREITA)
+        # ==========================================
+        is_eurofarma = "EUROFARMA" in cliente_nome.upper()
+
+        # Regra da Esquerda: Se Eurofarma -> logo_max, senão -> logo_mimo
+        arquivo_esquerda = "logo_max.png" if is_eurofarma else "logo_mimo.png"
         
-        # Logo Cliente
+        # Regra da Direita: Se Eurofarma -> logo_raia.jpg (ou o que estiver no seu mapa), 
+        # senão busca no mapa ou usa mimo como fallback
+        if is_eurofarma:
+            # Buscando o logo específico da Eurofarma no seu MAPA_LOGOS
+            arquivo_direita = MAPA_LOGOS.get("EUROFARMA LABORATORIOS S.A.", "logo_raia.jpg")
+        else:
+            arquivo_direita = next((v for k, v in MAPA_LOGOS.items() if k in cliente_nome.upper()), "logo_mimo.png")
+
+        # ==========================================
+        # APLICAÇÃO DOS LOGOS
+        # ==========================================
+        
+        # 1. Aplicar Logo Esquerda
         try:
-            for chave, arquivo in MAPA_LOGOS.items():
-                if chave in cliente_nome:
-                    cliente_logo = Image.open(arquivo)
-                    
-                    try: 
-                        filtro = Image.Resampling.LANCZOS
-                    except AttributeError: 
-                        filtro = Image.LANCZOS
-                        
-                    cliente_logo.thumbnail((210, 90), filtro) 
-                    largura_real_logo, _ = cliente_logo.size
-                    margem_direita = 20
-                    posicao_x_direita = nova_largura - largura_real_logo - margem_direita
-                    
-                    nova_img.paste(cliente_logo, (posicao_x_direita, 20), cliente_logo if cliente_logo.mode == 'RGBA' else None)
-                    break
-        except: 
-            pass
+            img_esq = Image.open(arquivo_esquerda)
+            img_esq.thumbnail((200, 80))
+            nova_img.paste(img_esq, (20, 20), img_esq if img_esq.mode == 'RGBA' else None)
+        except:
+            print(f"Erro ao carregar logo esquerda: {arquivo_esquerda}")
+
+        # 2. Aplicar Logo Direita
+        try:
+            img_dir = Image.open(arquivo_direita)
+            try: filtro = Image.Resampling.LANCZOS
+            except AttributeError: filtro = Image.LANCZOS
             
+            img_dir.thumbnail((210, 90), filtro)
+            largura_real_dir, _ = img_dir.size
+            posicao_x_dir = nova_largura - largura_real_dir - 20
+            nova_img.paste(img_dir, (posicao_x_dir, 20), img_dir if img_dir.mode == 'RGBA' else None)
+        except:
+            print(f"Erro ao carregar logo direita: {arquivo_direita}")
+
         nova_img.save(img_path)
         
     except Exception as e: 
