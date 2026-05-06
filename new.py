@@ -159,6 +159,17 @@ def gerar_escala():
         # Garante que as colunas fiquem em minúsculo, alinhadas com as variáveis lá do topo
         df_base.columns = [str(c).strip().lower() for c in df_base.columns]
         
+        # --- CORREÇÃO: Limpar os zeros decimais do prefixo ---
+        def limpar_prefixo(v):
+            if pd.isna(v): return ""
+            try:
+                # Transforma o 212200.0000 primeiro em float e depois em inteiro puro
+                return str(int(float(v)))
+            except:
+                return str(v)
+                
+        df_base[COL_PREFIXO] = df_base[COL_PREFIXO].apply(limpar_prefixo)
+        
         def converter_tempo(v):
             try:
                 dt = v if hasattr(v, 'hour') else pd.to_datetime(str(v).replace('h', ':').strip())
@@ -174,7 +185,6 @@ def gerar_escala():
 
         # Loop processando cada cliente da lista
         for cliente in lista_clientes:
-            # Note que o parâmetro case=False já lida com diferenças entre maiúsculas/minúsculas no nome da empresa
             df_filtrado = df_base[(df_base[COL_EMPRESA].str.contains(cliente, na=False, case=False)) & (df_base['aux_time'] >= inicio_f) & (df_base['aux_time'] <= fim_f)].copy()
             
             if df_filtrado.empty:
@@ -185,7 +195,11 @@ def gerar_escala():
             img_path = f"temp_{nome_seguro}.png"
             cols_p = [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA]
             
-            style = (df_filtrado[cols_p].style
+            # --- CORREÇÃO: Transforma os nomes das colunas em MAIÚSCULO para a exibição na tabela visual ---
+            df_display = df_filtrado[cols_p].copy()
+            df_display.columns = [str(c).upper() for c in df_display.columns]
+            
+            style = (df_display.style
                 .hide(axis='index')
                 .set_properties(**{
                     'background-color': 'white', 
@@ -200,7 +214,8 @@ def gerar_escala():
                         ('color', 'white'), 
                         ('border', '1px solid black'), 
                         ('text-align', 'center'),
-                        ('font-weight', 'bold')
+                        ('font-weight', 'bold'),
+                        ('text-transform', 'uppercase') # Garante 100% que fica maiúsculo no visual
                     ]},
                     {'selector': 'td', 'props': [('border', '1px solid black')]}
                 ])
