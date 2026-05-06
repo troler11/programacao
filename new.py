@@ -145,7 +145,7 @@ def gerar_escala():
         # ==========================================
         query = text("""
             SELECT "sentido", "h_real", "rota", "empresa", "frota_final", "motorista"
-            FROM programacao
+            FROM escalas
             WHERE data_escala = :data_atual
         """)
         
