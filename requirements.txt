@@ -7,3 +7,4 @@ pytz
 Pillow
 matplotlib
 playwright
+sqlalchemy
