@@ -8,3 +8,4 @@ Pillow
 matplotlib
 playwright
 sqlalchemy
+psycopg2
