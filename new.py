@@ -136,7 +136,7 @@ def gerar_escala():
     try:
         fuso = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(fuso).replace(tzinfo=None)
-        data_atual_str = agora.strftime("%Y-%m-%d")
+        data_atual_str = agora.strftime("%d-%n-%y")
 
         # ==========================================
         # BUSCA NO POSTGRESQL
