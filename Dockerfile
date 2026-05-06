@@ -23,4 +23,4 @@ COPY . .
 # Expõe a porta 5000 que é o padrão de APIs
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+CMD ["python", "new.py"]
