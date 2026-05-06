@@ -16,7 +16,7 @@ app = Flask(__name__)
 # Substitua com suas credenciais reais do PostgreSQL
 DB_URI = "postgresql://postgres:Lukinha2009%40@banco_sitemimo:5432/sitemimo?sslmode=disable"
 
-# Mapeamento de colunas baseado no seu código original
+# Retornado para MINÚSCULO, conforme a sua base de dados
 COL_PERIODO = 'sentido'            
 COL_HORA = 'h_real'              
 COL_LINHA = 'rota'            
@@ -136,12 +136,12 @@ def gerar_escala():
     try:
         fuso = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(fuso).replace(tzinfo=None)
-        data_atual_str = agora.strftime("%d-%m-%y")
+        
+        # Formato ajustado para dd/mm/yyyy
+        data_atual_str = agora.strftime("%d/%m/%Y")
 
         # ==========================================
         # BUSCA NO POSTGRESQL
-        # Assumimos que existe uma tabela chamada 'programacao' e 
-        # uma coluna de data chamada 'data_escala'.
         # ==========================================
         query = text("""
             SELECT "sentido", "h_real", "rota", "empresa", "frota_final", "motorista"
@@ -156,8 +156,8 @@ def gerar_escala():
         if df_base.empty:
             return jsonify({"erro": f"Sem dados para a data de hoje ({data_atual_str})"}), 404
 
-        # Garante que os nomes das colunas fiquem em maiúsculo (caso o banco retorne minúsculo)
-        df_base.columns = [str(c).strip().upper() for c in df_base.columns]
+        # Garante que as colunas fiquem em minúsculo, alinhadas com as variáveis lá do topo
+        df_base.columns = [str(c).strip().lower() for c in df_base.columns]
         
         def converter_tempo(v):
             try:
@@ -165,7 +165,7 @@ def gerar_escala():
                 return agora.replace(hour=dt.hour, minute=dt.minute, second=0)
             except: return pd.NaT
 
-        df_base['AUX_TIME'] = df_base[COL_HORA].apply(converter_tempo)
+        df_base['aux_time'] = df_base[COL_HORA].apply(converter_tempo)
         
         # Janela de tempo
         hora_obj = datetime.strptime(horario_alvo, '%H:%M').time()
@@ -174,7 +174,8 @@ def gerar_escala():
 
         # Loop processando cada cliente da lista
         for cliente in lista_clientes:
-            df_filtrado = df_base[(df_base[COL_EMPRESA].str.contains(cliente, na=False, case=False)) & (df_base['AUX_TIME'] >= inicio_f) & (df_base['AUX_TIME'] <= fim_f)].copy()
+            # Note que o parâmetro case=False já lida com diferenças entre maiúsculas/minúsculas no nome da empresa
+            df_filtrado = df_base[(df_base[COL_EMPRESA].str.contains(cliente, na=False, case=False)) & (df_base['aux_time'] >= inicio_f) & (df_base['aux_time'] <= fim_f)].copy()
             
             if df_filtrado.empty:
                 resultados_finais[cliente] = "Vazio (Sem viagens)"
