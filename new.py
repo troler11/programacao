@@ -137,46 +137,41 @@ def gerar_escala():
         fuso = pytz.timezone('America/Sao_Paulo')
         agora = datetime.now(fuso).replace(tzinfo=None)
         
-        # Formato ajustado para dd/mm/yyyy
         data_atual_str = agora.strftime("%d/%m/%Y")
 
-        # ==========================================
-        # BUSCA NO POSTGRESQL
-        # ==========================================
         query = text("""
             SELECT "sentido", "h_real", "rota", "empresa", "frota_final", "motorista"
             FROM escalas
             WHERE data_escala = :data_atual
         """)
         
-        # Carrega os dados diretamente pro Pandas passando o parâmetro de data
         with engine.connect() as conn:
             df_base = pd.read_sql(query, conn, params={"data_atual": data_atual_str})
 
         if df_base.empty:
             return jsonify({"erro": f"Sem dados para a data de hoje ({data_atual_str})"}), 404
 
-        # Garante que as colunas fiquem em minúsculo, alinhadas com as variáveis lá do topo
+        # Garante as colunas em minúsculo
         df_base.columns = [str(c).strip().lower() for c in df_base.columns]
         
-        # --- CORREÇÃO DEFINITIVA PARA O PREFIXO (Mantém letras e zeros à esquerda) ---
-        def tratar_frota(val):
-            if pd.isna(val): 
-                return ""
-            
-            val_str = str(val).strip()
-            
-            if val_str.lower() in ['nan', '<na>', 'none', 'null', 'nat', '']:
-                return ""
-                
-            if val_str.endswith('.0'):
-                return val_str[:-2]
-                
-            return val_str
-
-        df_base[COL_PREFIXO] = df_base[COL_PREFIXO].apply(tratar_frota)
+        # 1. MATA TODOS OS NULOS DO BANCO IMEDIATAMENTE (isso evita o vazamento de 'NaN' para o texto)
+        df_base = df_base.fillna("")
         
+        # 2. LIMPA A FROTA: Como é sempre inteiro, transformamos o número e removemos os decimais
+        def formatar_inteiro(x):
+            if x == "": 
+                return "" # Já tratamos os nulos acima
+            try:
+                # Se veio 1234.0, transforma em int 1234, depois em texto "1234"
+                return str(int(float(x)))
+            except:
+                return str(x).strip()
+
+        df_base[COL_PREFIXO] = df_base[COL_PREFIXO].apply(formatar_inteiro)
+        
+        # Tratamento de horário
         def converter_tempo(v):
+            if v == "": return pd.NaT
             try:
                 dt = v if hasattr(v, 'hour') else pd.to_datetime(str(v).replace('h', ':').strip())
                 return agora.replace(hour=dt.hour, minute=dt.minute, second=0)
@@ -184,12 +179,10 @@ def gerar_escala():
 
         df_base['aux_time'] = df_base[COL_HORA].apply(converter_tempo)
         
-        # Janela de tempo
         hora_obj = datetime.strptime(horario_alvo, '%H:%M').time()
         inicio_f = agora.replace(hour=hora_obj.hour, minute=hora_obj.minute, second=0)
         fim_f = inicio_f + timedelta(hours=2)
 
-        # Loop processando cada cliente da lista
         for cliente in lista_clientes:
             df_filtrado = df_base[(df_base[COL_EMPRESA].str.contains(cliente, na=False, case=False)) & (df_base['aux_time'] >= inicio_f) & (df_base['aux_time'] <= fim_f)].copy()
             
@@ -201,7 +194,6 @@ def gerar_escala():
             img_path = f"temp_{nome_seguro}.png"
             cols_p = [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA]
             
-            # --- Transforma os nomes das colunas em MAIÚSCULO para a exibição na tabela visual ---
             df_display = df_filtrado[cols_p].copy()
             df_display.columns = [str(c).upper() for c in df_display.columns]
             
@@ -221,7 +213,7 @@ def gerar_escala():
                         ('border', '1px solid black'), 
                         ('text-align', 'center'),
                         ('font-weight', 'bold'),
-                        ('text-transform', 'uppercase') # Garante 100% que fica maiúsculo no visual
+                        ('text-transform', 'uppercase')
                     ]},
                     {'selector': 'td', 'props': [('border', '1px solid black')]}
                 ])
