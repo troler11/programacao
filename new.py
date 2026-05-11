@@ -34,8 +34,8 @@ MAPA_LOGOS = {
 }
 
 MAPA_GRUPOS = {
-    "MELI RC01": "5511917623237", "ADORO": "5511917623237", "AAM": "5511917623237", "JDE": "5511917623237", "CMR": "5511917623237",
-    "HELLERMANN": "5511917623237", "NISSEI": "5511917623237", "B BOSCH": "5511917623237", "CPQ": "5511917623237", "RAIA DROGASIL S/A": "5511917623237", 
+    "MELI RC01": "120363280020752507", "ADORO": "5511998833731-1587054382", "AAM": "120363204855765138", "JDE": "5511989174875-1552591041", "CMR": "5511996041777-1559824598",
+    "HELLERMANN": "120363221247225251", "NISSEI": "120363401748722742", "B BOSCH": "120363203509890550", "CPQ": "120363221524193054", "RAIA DROGASIL S/A": "120363407253996616", 
     "EUROFARMA LABORATORIOS S.A.": "120363425799324384", "SILGAN": "120363160459079457", "THEOTO S A": "120363223102667295", "SPUMAPAC": "120363159621600904", "BOLLHOFF": "120363419638259481",
     "MELI SP09/15": "120363402150942864", "MELI SP10": "120363049310331127", "WEIR": "120363222601964123", "MELI SP16": "120363422963563713",  "MELI GRU 01 / ZN SP16": "120363422963563713",
     "STIHL": "120363156787150724"
@@ -159,16 +159,11 @@ def gerar_escala():
         # Garante que as colunas fiquem em minúsculo, alinhadas com as variáveis lá do topo
         df_base.columns = [str(c).strip().lower() for c in df_base.columns]
         
-        # --- CORREÇÃO: Limpar os zeros decimais do prefixo ---
-        def limpar_prefixo(v):
-            if pd.isna(v): return ""
-            try:
-                # Transforma o 212200.0000 primeiro em float e depois em inteiro puro
-                return str(int(float(v)))
-            except:
-                return str(v)
-                
-        df_base[COL_PREFIXO] = df_base[COL_PREFIXO].apply(limpar_prefixo)
+        # --- CORREÇÃO: Usando o tipo Int64 nativo do Pandas para tratar nulos em colunas inteiras ---
+        # 1. Converte a coluna permitindo nulos sem transformar em float (Int64)
+        # 2. Converte tudo em string
+        # 3. Substitui o "<NA>" criado pelo Pandas por vazio
+        df_base[COL_PREFIXO] = df_base[COL_PREFIXO].astype('Int64').astype(str).replace('<NA>', '')
         
         def converter_tempo(v):
             try:
@@ -195,7 +190,7 @@ def gerar_escala():
             img_path = f"temp_{nome_seguro}.png"
             cols_p = [COL_PERIODO, COL_HORA, COL_LINHA, COL_EMPRESA, COL_PREFIXO, COL_MOTORISTA]
             
-            # --- CORREÇÃO: Transforma os nomes das colunas em MAIÚSCULO para a exibição na tabela visual ---
+            # --- Transforma os nomes das colunas em MAIÚSCULO para a exibição na tabela visual ---
             df_display = df_filtrado[cols_p].copy()
             df_display.columns = [str(c).upper() for c in df_display.columns]
             
