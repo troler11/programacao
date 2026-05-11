@@ -154,20 +154,29 @@ def gerar_escala():
         # Garante as colunas em minúsculo
         df_base.columns = [str(c).strip().lower() for c in df_base.columns]
         
-        # 1. MATA TODOS OS NULOS DO BANCO IMEDIATAMENTE (isso evita o vazamento de 'NaN' para o texto)
+        # 1. MATA TODOS OS NULOS DO BANCO IMEDIATAMENTE 
         df_base = df_base.fillna("")
         
-        # 2. LIMPA A FROTA: Como é sempre inteiro, transformamos o número e removemos os decimais
-        def formatar_inteiro(x):
-            if x == "": 
-                return "" # Já tratamos os nulos acima
-            try:
-                # Se veio 1234.0, transforma em int 1234, depois em texto "1234"
-                return str(int(float(x)))
-            except:
-                return str(x).strip()
+        # 2. NOVA LIMPEZA (PURAMENTE TEXTUAL, SEM MATEMÁTICA)
+        def limpar_texto(x):
+            # Transforma qualquer coisa em texto e remove espaços
+            val = str(x).strip()
+            
+            # Se for a palavra "nan", "none", etc., apaga! (ignora maiúscula/minúscula)
+            if val.lower() in ['nan', 'none', 'null', '<na>', 'nat', '']:
+                return ""
+                
+            # Se o Pandas injetou um .0 no final do número da frota, corta o final
+            if val.endswith('.0'):
+                return val[:-2]
+                
+            return val
 
-        df_base[COL_PREFIXO] = df_base[COL_PREFIXO].apply(formatar_inteiro)
+        # Aplica a limpeza nas colunas de exibição para garantir
+        colunas_exibicao = [COL_PREFIXO, COL_MOTORISTA, COL_LINHA, COL_EMPRESA, COL_PERIODO]
+        for col in colunas_exibicao:
+            if col in df_base.columns:
+                df_base[col] = df_base[col].apply(limpar_texto)
         
         # Tratamento de horário
         def converter_tempo(v):
