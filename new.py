@@ -34,8 +34,8 @@ MAPA_LOGOS = {
 }
 
 MAPA_GRUPOS = {
-    "MELI RC01": "120363280020752507", "ADORO": "5511998833731-1587054382", "AAM": "120363204855765138", "JDE": "5511989174875-1552591041", "CMR": "5511996041777-1559824598",
-    "HELLERMANN": "120363221247225251", "NISSEI": "120363401748722742", "B BOSCH": "120363203509890550", "CPQ": "120363221524193054", "RAIA DROGASIL S/A": "120363407253996616", 
+    "MELI RC01": "5511917623237", "ADORO": "5511917623237", "AAM": "5511917623237", "JDE": "5511917623237", "CMR": "5511917623237",
+    "HELLERMANN": "5511917623237", "NISSEI": "5511917623237", "B BOSCH": "5511917623237", "CPQ": "5511917623237", "RAIA DROGASIL S/A": "5511917623237", 
     "EUROFARMA LABORATORIOS S.A.": "120363425799324384", "SILGAN": "120363160459079457", "THEOTO S A": "120363223102667295", "SPUMAPAC": "120363159621600904", "BOLLHOFF": "120363419638259481",
     "MELI SP09/15": "120363402150942864", "MELI SP10": "120363049310331127", "WEIR": "120363222601964123", "MELI SP16": "120363422963563713",  "MELI GRU 01 / ZN SP16": "120363422963563713",
     "STIHL": "120363156787150724"
@@ -159,11 +159,22 @@ def gerar_escala():
         # Garante que as colunas fiquem em minúsculo, alinhadas com as variáveis lá do topo
         df_base.columns = [str(c).strip().lower() for c in df_base.columns]
         
-        # --- CORREÇÃO: Usando o tipo Int64 nativo do Pandas para tratar nulos em colunas inteiras ---
-        # 1. Converte a coluna permitindo nulos sem transformar em float (Int64)
-        # 2. Converte tudo em string
-        # 3. Substitui o "<NA>" criado pelo Pandas por vazio
-        df_base[COL_PREFIXO] = df_base[COL_PREFIXO].astype('Int64').astype(str).replace('<NA>', '')
+        # --- CORREÇÃO DEFINITIVA PARA O PREFIXO (Mantém letras e zeros à esquerda) ---
+        def tratar_frota(val):
+            if pd.isna(val): 
+                return ""
+            
+            val_str = str(val).strip()
+            
+            if val_str.lower() in ['nan', '<na>', 'none', 'null', 'nat', '']:
+                return ""
+                
+            if val_str.endswith('.0'):
+                return val_str[:-2]
+                
+            return val_str
+
+        df_base[COL_PREFIXO] = df_base[COL_PREFIXO].apply(tratar_frota)
         
         def converter_tempo(v):
             try:
